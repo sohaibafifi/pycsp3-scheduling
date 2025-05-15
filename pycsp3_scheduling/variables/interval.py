@@ -83,6 +83,9 @@ class IntervalVar:
         # Validate bounds
         self._validate_bounds()
 
+        # Register for model compilation/interop helpers
+        register_interval(self)
+
     @staticmethod
     def _get_next_id() -> int:
         """Get next unique ID for interval variables."""

@@ -41,10 +41,10 @@ task3 = IntervalVar(size=8, name="task3")
 satisfy(end_before_start(task1, task2))
 
 # No overlap: task2 and task3 cannot overlap
-satisfy(no_overlap([task2, task3]))
+satisfy(SeqNoOverlap([task2, task3]))
 
 # Minimize makespan
-minimize(max(end_of(task1), end_of(task2), end_of(task3)))
+minimize(max(end_time(task1), end_time(task2), end_time(task3)))
 ```
 
 ## Example: Job Shop Scheduling
@@ -76,10 +76,10 @@ satisfy(
 )
 
 # No overlap on machines
-satisfy(no_overlap(seq) for seq in sequences)
+satisfy(SeqNoOverlap(seq) for seq in sequences)
 
 # Minimize makespan
-minimize(max(end_of(ops[j][-1]) for j in range(n_jobs)))
+minimize(Maximum(end_time(ops[j][-1]) for j in range(n_jobs)))
 ```
 
 ## Example: RCPSP (Resource-Constrained Project Scheduling)
@@ -108,7 +108,7 @@ for r in range(len(capacities)):
     satisfy(resource <= capacities[r])
 
 # Minimize makespan
-minimize(max(end_of(t) for t in tasks))
+minimize(Maximum(end_time(t) for t in tasks))
 ```
 
 ## API Reference
@@ -130,6 +130,13 @@ minimize(max(end_of(t) for t in tasks))
 | `size_of(interval, absent_value=0)` | Size/duration of interval |
 | `length_of(interval, absent_value=0)` | Length of interval |
 | `presence_of(interval)` | Boolean presence status |
+
+### Interop Helpers
+
+| Function | Description |
+|----------|-------------|
+| `start_time(interval)` | pycsp3 variable for start time |
+| `end_time(interval)` | pycsp3 expression for end time |
 
 ### Precedence Constraints
 
