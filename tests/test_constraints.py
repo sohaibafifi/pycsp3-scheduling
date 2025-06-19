@@ -92,13 +92,15 @@ class TestSeqNoOverlap:
         with pytest.raises(TypeError, match="IntervalVar"):
             SeqNoOverlap([1, 2])
 
-    def test_optional_interval_not_supported(self):
-        """Optional intervals are rejected for now."""
+    def test_optional_interval_supported(self):
+        """Optional intervals are now supported."""
         task = IntervalVar(size=3, optional=True, name="t1")
-        seq = SequenceVar(intervals=[task], name="machine")
+        task2 = IntervalVar(size=2, optional=True, name="t2")
+        seq = SequenceVar(intervals=[task, task2], name="machine")
 
-        with pytest.raises(NotImplementedError, match="Optional intervals"):
-            SeqNoOverlap(seq)
+        # Should not raise - optional intervals now supported
+        ctr = SeqNoOverlap(seq)
+        assert isinstance(ctr, ECtr)
 
 
 # =============================================================================
