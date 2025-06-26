@@ -66,21 +66,31 @@ class TestSeqNoOverlap:
         assert isinstance(ctr, ECtr)
         assert isinstance(ctr.constraint, ConstraintNoOverlap)
 
-    def test_transition_matrix_not_supported(self):
-        """transition_matrix is rejected for now."""
+    def test_transition_matrix_now_supported(self):
+        """transition_matrix is now supported with typed SequenceVar."""
+        tasks = [IntervalVar(size=3, name="t1"), IntervalVar(size=2, name="t2")]
+        seq = SequenceVar(intervals=tasks, types=[0, 1], name="machine")
+
+        # Should not raise - now supported
+        result = SeqNoOverlap(seq, transition_matrix=[[0, 5], [3, 0]])
+        assert isinstance(result, list)
+
+    def test_transition_matrix_requires_types(self):
+        """transition_matrix requires SequenceVar with types."""
         task = IntervalVar(size=3, name="t1")
         seq = SequenceVar(intervals=[task], name="machine")
 
-        with pytest.raises(NotImplementedError, match="transition_matrix"):
+        with pytest.raises(ValueError, match="requires a SequenceVar with types"):
             SeqNoOverlap(seq, transition_matrix=[[0]])
 
-    def test_is_direct_not_supported(self):
-        """is_direct is rejected for now."""
-        task = IntervalVar(size=3, name="t1")
-        seq = SequenceVar(intervals=[task], name="machine")
+    def test_is_direct_parameter(self):
+        """is_direct parameter is accepted (no special behavior yet)."""
+        tasks = [IntervalVar(size=3, name="t1"), IntervalVar(size=2, name="t2")]
+        seq = SequenceVar(intervals=tasks, types=[0, 1], name="machine")
 
-        with pytest.raises(NotImplementedError, match="is_direct"):
-            SeqNoOverlap(seq, is_direct=True)
+        # is_direct can be used with transition matrix
+        result = SeqNoOverlap(seq, transition_matrix=[[0, 5], [3, 0]], is_direct=True)
+        assert isinstance(result, list)
 
     def test_invalid_sequence_type(self):
         """SeqNoOverlap rejects non-sequences."""
