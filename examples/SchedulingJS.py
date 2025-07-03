@@ -28,3 +28,13 @@ satisfy(SeqNoOverlap(seq) for seq in sequences)
 
 # Minimize makespan
 minimize(Maximum(end_time(ops[j][-1]) for j in range(n_jobs)))
+
+result = solve()
+if result in [SAT, OPTIMUM]:
+    for j in range(n_jobs):
+        for o in range(n_machines):
+            print(f"{ops[j][o]}: start={start_time(ops[j][o])}, end={end_time(ops[j][o])}")
+    for m in range(n_machines):
+        print(f"Sequence on machine {m}: {sequences[m]}")
+else: 
+    print("Result: ", result)
