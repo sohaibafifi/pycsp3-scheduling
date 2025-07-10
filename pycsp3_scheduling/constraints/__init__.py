@@ -6,7 +6,7 @@ This module provides:
 - Grouping constraints: span, alternative, synchronize
 - Sequence constraints: SeqNoOverlap, first, last, before, previous
 - Sequence consistency: same_sequence, same_common_subsequence
-- Cumulative constraints: cumul_range, always_in (future)
+- Cumulative constraints: Cumulative (capacity constraint)
 - State constraints: always_equal, always_constant, always_no_state (future)
 - Forbidden region constraints: forbid_start, forbid_end, forbid_extent (future)
 """
@@ -43,10 +43,13 @@ from pycsp3_scheduling.constraints.sequence import (
     same_sequence,
 )
 
+# Cumulative constraints
+from pycsp3_scheduling.constraints.cumulative import (
+    SeqCumulative,
+    build_cumul_constraint,
+)
+
 # To be implemented:
-# from pycsp3_scheduling.constraints.cumulative import (
-#     cumul_range,
-# )
 # from pycsp3_scheduling.constraints.state import (
 #     always_in, always_equal, always_constant, always_no_state,
 # )
@@ -78,4 +81,7 @@ __all__ = [
     # Sequence consistency
     "same_sequence",
     "same_common_subsequence",
+    # Cumulative constraints
+    "SeqCumulative",
+    "build_cumul_constraint",
 ]

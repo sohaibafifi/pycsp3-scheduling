@@ -9,7 +9,7 @@ This package extends pycsp3 with comprehensive scheduling support including:
 - Sequence constraints (SeqNoOverlap, first, last, before, previous)
 - Sequence consistency constraints (same_sequence, same_common_subsequence)
 - Sequence accessor expressions (start_of_next, start_of_prev, etc.)
-- Cumulative functions (pulse, step_at_start, step_at_end) [future]
+- Cumulative functions (pulse, step_at_start, step_at_end, Cumulative)
 - State functions and constraints [future]
 - XCSP3 scheduling extension output [future]
 
@@ -59,6 +59,7 @@ from pycsp3_scheduling.interop import end_time, start_time
 
 # Constraints
 from pycsp3_scheduling.constraints import (
+    SeqCumulative,
     SeqNoOverlap,
     alternative,
     before,
@@ -79,11 +80,21 @@ from pycsp3_scheduling.constraints import (
     synchronize,
 )
 
-# Functions (to be implemented)
-# from pycsp3_scheduling.functions import (
-#     pulse, step_at, step_at_start, step_at_end,
-#     CumulFunction, StateFunction, TransitionMatrix, StepFunction,
-# )
+# Cumulative Functions
+from pycsp3_scheduling.functions import (
+    CumulExpr,
+    CumulFunction,
+    CumulConstraint,
+    CumulHeightExpr,
+    always_in,
+    cumul_range,
+    height_at_end,
+    height_at_start,
+    pulse,
+    step_at,
+    step_at_end,
+    step_at_start,
+)
 
 __all__ = [
     "__version__",
@@ -143,4 +154,19 @@ __all__ = [
     # Constraints - Sequence Consistency
     "same_sequence",
     "same_common_subsequence",
+    # Constraints - Cumulative
+    "SeqCumulative",
+    # Cumulative Functions
+    "CumulExpr",
+    "CumulFunction",
+    "CumulConstraint",
+    "CumulHeightExpr",
+    "pulse",
+    "step_at",
+    "step_at_start",
+    "step_at_end",
+    "cumul_range",
+    "always_in",
+    "height_at_start",
+    "height_at_end",
 ]
