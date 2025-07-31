@@ -1,0 +1,189 @@
+[
+  {
+    "name": "AircraftLanding",
+    "fullname": "realistic/AircraftLanding",
+    "constraints": [
+      "NoOverlap"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "xcsp22"
+    ],
+    "links": [
+      "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/airlandinfo.html",
+      "https://www.jstor.org/stable/25768908",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/AircraftLanding/AircraftLanding.py"
+    ]
+  },
+  {
+    "name": "CyclicRCPSP",
+    "fullname": "realistic/CyclicRCPSP",
+    "constraints": [
+      "SeqCumulative"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "mzn11",
+      "mzn14"
+    ],
+    "links": [
+      "https://www.minizinc.org/challenge/2014/results/",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/CyclicRCPSP/CyclicRCPSP.py"
+    ]
+  },
+  {
+    "name": "FlexibleJobshop",
+    "fullname": "realistic/FlexibleJobshop",
+    "constraints": [
+      "end_before_start",
+      "alternative",
+      "SeqCumulative"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "mzn13"
+    ],
+    "links": [
+      "https://www.minizinc.org/challenge/2013/results/",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/FlexibleJobshop/FlexibleJobshop.py"
+    ]
+  },
+  {
+    "name": "MRCPSP",
+    "fullname": "realistic/MRCPSP",
+    "constraints": [
+      "end_before_start",
+      "alternative",
+      "Cumulative"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "mzn16",
+      "mzn23"
+    ],
+    "links": [
+      "https://www.minizinc.org/challenge/2023/results/",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/MRCPSP/MRCPSP.py"
+    ]
+  },
+  {
+    "name": "MSPSP",
+    "fullname": "realistic/MSPSP",
+    "constraints": [
+      "end_before_start",
+      "SeqCumulative",
+      "Cumulative"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "mzn12"
+    ],
+    "links": [
+      "https://www.minizinc.org/challenge/2012/results/",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/MSPSP/MSPSP.py"
+    ]
+  },
+  {
+    "name": "RCPSP",
+    "fullname": "realistic/RCPSP",
+    "constraints": [
+      "end_before_start",
+      "SeqCumulative"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "csplib",
+      "xcsp22"
+    ],
+    "links": [
+      "https://www.om-db.wi.tum.de/psplib/data.html",
+      "https://www.csplib.org/Problems/prob061/",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/RCPSP/RCPSP.py"
+    ]
+  },
+  {
+    "name": "SchedulingFS",
+    "fullname": "realistic/SchedulingFS",
+    "constraints": [
+      "end_before_start",
+      "SeqNoOverlap"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "notebook"
+    ],
+    "links": [
+      "https://en.wikipedia.org/wiki/Flow_shop_scheduling",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/SchedulingFS/SchedulingFS.py"
+    ]
+  },
+  {
+    "name": "SchedulingJS",
+    "fullname": "realistic/SchedulingJS",
+    "constraints": [
+      "end_before_start",
+      "NoOverlap"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling"
+    ],
+    "links": [
+      "https://en.wikipedia.org/wiki/Job_shop_scheduling",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/SchedulingJS/SchedulingJS.py"
+    ]
+  },
+  {
+    "name": "SchedulingOS",
+    "fullname": "realistic/SchedulingOS",
+    "constraints": [
+      "NoOverlap",
+      "AllDifferent",
+      "Table"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "xcsp25"
+    ],
+    "links": [
+      "https://en.wikipedia.org/wiki/Open-shop_scheduling",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/SchedulingOS/SchedulingOS.py"
+    ]
+  },
+  {
+    "name": "TestScheduling",
+    "fullname": "realistic/TestScheduling",
+    "constraints": [
+      "NoOverlap",
+      "SeqCumulative"
+    ],
+    "type": "COP",
+    "tags": [
+      "realistic",
+      "scheduling",
+      "csplib",
+      "xcsp24"
+    ],
+    "links": [
+      "https://www.csplib.org/Problems/prob073/",
+      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/TestScheduling/TestScheduling.py"
+    ]
+  }
+]

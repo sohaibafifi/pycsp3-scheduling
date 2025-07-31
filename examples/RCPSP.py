@@ -11,9 +11,6 @@ precedences = [(0, 2), (1, 3), (2, 4)]
 tasks = [IntervalVar(size=durations[i], name=f"task_{i}")
          for i in range(len(durations))]
 
-# Get start variables for solution extraction
-starts = [start_time(t) for t in tasks]
-
 # Precedence constraints
 satisfy(end_before_start(tasks[p], tasks[s]) for p, s in precedences)
 
@@ -27,9 +24,8 @@ for r in range(len(capacities)):
 minimize(Maximum(end_time(t) for t in tasks))
 
 if solve() in [SAT, OPTIMUM]:
-    for i, t in enumerate(tasks):
-        s = value(starts[i])
-        e = s + durations[i]
-        print(f"{t.name}: start={s}, end={e}")
+    for t in tasks:
+        v = interval_value(t)
+        print(f"{t.name}: start={v['start']}, end={v['end']}")
 else:
     print("No solution found")

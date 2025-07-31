@@ -33,7 +33,8 @@ result = solve()
 if result in [SAT, OPTIMUM]:
     for j in range(n_jobs):
         for o in range(n_machines):
-            print(f"{ops[j][o]}: start={start_time(ops[j][o])}, end={end_time(ops[j][o])}")
+            v = interval_value(ops[j][o])
+            print(f"{ops[j][o].name}: start={v['start']}, end={v['end']}")
     for m in range(n_machines):
         print(f"Sequence on machine {m}: {sequences[m]}")
 else: 
