@@ -27,6 +27,7 @@ extensions = [
     "sphinx.ext.intersphinx",  # Link to other projects' documentation
     "sphinx.ext.autosummary",  # Generate summary tables
     "myst_parser",  # Support for Markdown files
+    "sphinx_copybutton",  # Copy button for code blocks
 ]
 
 # Napoleon settings for docstrings
@@ -79,17 +80,32 @@ master_doc = "index"
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 
-# Theme options
+# Furo theme options - elegant and minimal
 html_theme_options = {
-    "navigation_depth": 4,
-    "collapse_navigation": False,
-    "sticky_navigation": True,
-    "includehidden": True,
-    "titles_only": False,
+    "light_css_variables": {
+        "color-brand-primary": "#2563eb",
+        "color-brand-content": "#2563eb",
+        "font-stack": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        "font-stack--monospace": "'JetBrains Mono', 'Fira Code', monospace",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#60a5fa",
+        "color-brand-content": "#60a5fa",
+    },
+    "sidebar_hide_name": False,
+    "navigation_with_keys": True,
+    "top_of_page_button": "edit",
 }
+
+# Additional HTML settings
+html_title = "pycsp3-scheduling"
+html_short_title = "pycsp3-scheduling"
+html_show_sourcelink = False
+html_copy_source = False
 
 # -- Options for autodoc -----------------------------------------------------
 
