@@ -26,9 +26,13 @@ extensions = [
     "sphinx.ext.viewcode",  # Add links to source code
     "sphinx.ext.intersphinx",  # Link to other projects' documentation
     "sphinx.ext.autosummary",  # Generate summary tables
-    "myst_parser",  # Support for Markdown files
+    "myst_nb",  # Support for Markdown and Jupyter notebooks
     "sphinx_copybutton",  # Copy button for code blocks
 ]
+
+# MyST-NB settings
+nb_execution_mode = "off"  # Don't execute notebooks during build
+nb_render_image_options = {"align": "center"}
 
 # Napoleon settings for docstrings
 napoleon_google_docstring = True
@@ -68,10 +72,11 @@ intersphinx_mapping = {
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-# Source file extensions
+# Source file extensions - myst_nb handles both .md and .ipynb
 source_suffix = {
     ".rst": "restructuredtext",
-    ".md": "markdown",
+    ".ipynb": "myst-nb",
+    ".md": "myst-nb",
 }
 
 # The master toctree document

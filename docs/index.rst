@@ -54,6 +54,15 @@ Getting Started
    user_guide/scheduling_concepts
    user_guide/modeling_guide
 
+Tutorials
+---------
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Interactive Tutorials
+
+   tutorials/index
+
 API Reference
 -------------
 
