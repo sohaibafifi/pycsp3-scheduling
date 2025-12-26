@@ -1,0 +1,33 @@
+{%- extends "furo/page.html" %}
+
+{%- block footer %}
+<footer class="bottom-of-page">
+  <div class="left-details">
+    <div class="copyright">
+      Copyright &#169; 2026, <a href="https://sohaibafifi.com">Sohaib AFIFI</a>
+    </div>
+    {% trans %}Made with {% endtrans -%}
+    {%- if show_sphinx -%}
+      <a href="https://www.sphinx-doc.org/">Sphinx</a> {% trans %}and{% endtrans %}
+    {%- endif -%}
+    <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+    {{ _("Furo") }}
+    {%- if last_updated -%}
+      <div class="last-updated">{% trans last_updated=last_updated|e %}Last updated on {{ last_updated }}.{% endtrans %}</div>
+    {%- endif -%}
+  </div>
+  <div class="right-details">
+    {% block footer_icons %}
+    {%- for icon_dict in theme_footer_icons %}
+      <a class="muted-link {{ icon_dict.class }}" href="{{ icon_dict.url }}" aria-label="{{ icon_dict.name }}">
+        {%- if icon_dict.html -%}
+          {{ icon_dict.html }}
+        {%- elif icon_dict.img -%}
+          <img src="{{ icon_dict.img }}">
+        {%- endif -%}
+      </a>
+    {%- endfor %}
+    {% endblock %}
+  </div>
+</footer>
+{%- endblock %}
