@@ -315,6 +315,8 @@ def end_of(interval: IntervalVar, absent_value: int = 0) -> IntervalExpr:
 
     If the interval is absent (optional and not selected), returns absent_value.
 
+    FIXME: end_of() still returns an internal IntervalExpr; for pycsp3 objectives use end_time() for now.
+
     Args:
         interval: The interval variable.
         absent_value: Value to return if interval is absent (default: 0).

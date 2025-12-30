@@ -41,23 +41,10 @@ from pycsp3_scheduling.expressions import (
     start_of,
 )
 
-# Constraints (to be implemented)
-# from pycsp3_scheduling.constraints import (
-#     # Precedence
-#     start_at_start, start_at_end, end_at_start, end_at_end,
-#     start_before_start, start_before_end, end_before_start, end_before_end,
-#     # Grouping
-#     span, alternative, synchronize,
-#     # Sequence
-#     no_overlap, first, last, before, previous,
-#     same_sequence, same_common_subsequence,
-#     # Cumulative
-#     cumul_range, always_in,
-#     # State
-#     always_equal, always_constant, always_no_state,
-#     # Forbidden
-#     forbid_start, forbid_end, forbid_extent,
-# )
+# Interop
+from pycsp3_scheduling.interop import end_time, start_time
+
+from pycsp3_scheduling.constraints import SeqNoOverlap, end_before_start
 
 # Functions (to be implemented)
 # from pycsp3_scheduling.functions import (
@@ -85,4 +72,10 @@ __all__ = [
     "overlap_length",
     "expr_min",
     "expr_max",
+    # Interop
+    "start_time",
+    "end_time",
+    # Constraints
+    "SeqNoOverlap",
+    "end_before_start",
 ]
