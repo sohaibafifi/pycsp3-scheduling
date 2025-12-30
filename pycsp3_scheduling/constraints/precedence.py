@@ -22,4 +22,10 @@ def end_before_start(a: IntervalVar, b: IntervalVar, delay: int = 0):
     start_a = start_var(a)
     start_b = start_var(b)
     duration_a = length_value(a)
-    return start_a + duration_a + delay <= start_b
+
+    from pycsp3.classes.nodes import Node, TypeNode
+
+    lhs = Node.build(TypeNode.ADD, start_a, duration_a)
+    if delay:
+        lhs = Node.build(TypeNode.ADD, lhs, delay)
+    return Node.build(TypeNode.LE, lhs, start_b)
