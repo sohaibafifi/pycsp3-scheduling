@@ -44,15 +44,66 @@ def _range_from_bounds(min_val: int, max_val: int, horizon: int) -> range:
     return range(min_val, max_val + 1)
 
 
+def _ensure_options(options) -> None:
+    if hasattr(options, "checker"):
+        return
+    options.set_values(
+        "data",
+        "dataparser",
+        "dataexport",
+        "dataformat",
+        "variant",
+        "tocsp",
+        "checker",
+        "solver",
+        "output",
+        "suffix",
+        "callback",
+    )
+    options.set_flags(
+        "dataexport",
+        "datasober",
+        "solve",
+        "display",
+        "verbose",
+        "lzma",
+        "sober",
+        "ev",
+        "safe",
+        "recognizeSlides",
+        "keepHybrid",
+        "keepSmartTransitions",
+        "keepsum",
+        "unchangescalar",
+        "restrictTablesWrtDomains",
+        "dontruncompactor",
+        "dontcompactValues",
+        "groupsumcoeffs",
+        "usemeta",
+        "dontuseauxcache",
+        "dontadjustindexing",
+        "dontbuildsimilarconstraints",
+        "debug",
+        "mini",
+        "uncurse",
+        "existbyelement",
+        "safetables",
+    )
+    if options.checker is None:
+        options.checker = "fast"
+
+
 def _require_pycsp3():
     try:
         from pycsp3 import Var
+        from pycsp3.dashboard import options
         from pycsp3.classes.main.variables import Variable
     except Exception as exc:  # pragma: no cover - depends on runtime environment
         raise ImportError(
             "pycsp3 is required to build scheduling constraints. "
             "Install a compatible version and Python runtime."
         ) from exc
+    _ensure_options(options)
     return Var, Variable
 
 
