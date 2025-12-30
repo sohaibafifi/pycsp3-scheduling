@@ -17,14 +17,29 @@ from __future__ import annotations
 __version__ = "0.1.0"
 __author__ = "Sohaib AFIFI"
 
-# Variables (to be implemented)
-# from pycsp3_scheduling.variables import IntervalVar, SequenceVar, IntervalVarArray
+# Variables
+from pycsp3_scheduling.variables import (
+    INTERVAL_MAX,
+    INTERVAL_MIN,
+    IntervalVar,
+    IntervalVarArray,
+    IntervalVarDict,
+    SequenceVar,
+    SequenceVarArray,
+)
 
-# Expressions (to be implemented)
-# from pycsp3_scheduling.expressions import (
-#     start_of, end_of, size_of, length_of, presence_of,
-#     overlap_length, start_eval, end_eval, size_eval, length_eval,
-# )
+# Expressions
+from pycsp3_scheduling.expressions import (
+    IntervalExpr,
+    end_of,
+    expr_max,
+    expr_min,
+    length_of,
+    overlap_length,
+    presence_of,
+    size_of,
+    start_of,
+)
 
 # Constraints (to be implemented)
 # from pycsp3_scheduling.constraints import (
@@ -53,14 +68,21 @@ __author__ = "Sohaib AFIFI"
 __all__ = [
     "__version__",
     # Variables
-    # "IntervalVar",
-    # "SequenceVar",
-    # "IntervalVarArray",
+    "IntervalVar",
+    "IntervalVarArray",
+    "IntervalVarDict",
+    "SequenceVar",
+    "SequenceVarArray",
+    "INTERVAL_MIN",
+    "INTERVAL_MAX",
     # Expressions
-    # "start_of",
-    # "end_of",
-    # "size_of",
-    # "length_of",
-    # "presence_of",
-    # ... more to come
+    "IntervalExpr",
+    "start_of",
+    "end_of",
+    "size_of",
+    "length_of",
+    "presence_of",
+    "overlap_length",
+    "expr_min",
+    "expr_max",
 ]

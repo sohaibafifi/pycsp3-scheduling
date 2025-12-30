@@ -8,13 +8,38 @@ This module provides:
 
 from __future__ import annotations
 
-# To be implemented:
-# from pycsp3_scheduling.variables.interval import IntervalVar, IntervalVarArray, IntervalVarDict
-# from pycsp3_scheduling.variables.sequence import SequenceVar
+from pycsp3_scheduling.variables.interval import (
+    INTERVAL_MAX,
+    INTERVAL_MIN,
+    IntervalVar,
+    IntervalVarArray,
+    IntervalVarDict,
+    clear_interval_registry,
+    get_registered_intervals,
+    register_interval,
+)
+from pycsp3_scheduling.variables.sequence import (
+    SequenceVar,
+    SequenceVarArray,
+    clear_sequence_registry,
+    get_registered_sequences,
+    register_sequence,
+)
 
 __all__ = [
-    # "IntervalVar",
-    # "IntervalVarArray",
-    # "IntervalVarDict",
-    # "SequenceVar",
+    # Interval variables
+    "IntervalVar",
+    "IntervalVarArray",
+    "IntervalVarDict",
+    "INTERVAL_MIN",
+    "INTERVAL_MAX",
+    "register_interval",
+    "get_registered_intervals",
+    "clear_interval_registry",
+    # Sequence variables
+    "SequenceVar",
+    "SequenceVarArray",
+    "register_sequence",
+    "get_registered_sequences",
+    "clear_sequence_registry",
 ]

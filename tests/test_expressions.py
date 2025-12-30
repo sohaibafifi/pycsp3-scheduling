@@ -1,0 +1,344 @@
+"""Tests for interval expressions."""
+
+import pytest
+
+from pycsp3_scheduling.variables import IntervalVar, clear_interval_registry
+from pycsp3_scheduling.expressions import (
+    ExprType,
+    IntervalExpr,
+    start_of,
+    end_of,
+    size_of,
+    length_of,
+    presence_of,
+    overlap_length,
+    expr_min,
+    expr_max,
+)
+
+
+@pytest.fixture(autouse=True)
+def reset_registry():
+    """Reset registries before each test."""
+    clear_interval_registry()
+    IntervalExpr._id_counter = 0
+    yield
+    clear_interval_registry()
+
+
+class TestBasicAccessors:
+    """Tests for basic accessor expressions."""
+
+    def test_start_of(self):
+        """Test start_of expression."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task)
+
+        assert expr.expr_type == ExprType.START_OF
+        assert expr.interval == task
+        assert expr.absent_value == 0
+
+    def test_start_of_with_absent_value(self):
+        """Test start_of with custom absent value."""
+        task = IntervalVar(size=10, optional=True, name="task")
+        expr = start_of(task, absent_value=-1)
+
+        assert expr.expr_type == ExprType.START_OF
+        assert expr.absent_value == -1
+
+    def test_end_of(self):
+        """Test end_of expression."""
+        task = IntervalVar(size=10, name="task")
+        expr = end_of(task)
+
+        assert expr.expr_type == ExprType.END_OF
+        assert expr.interval == task
+        assert expr.absent_value == 0
+
+    def test_size_of(self):
+        """Test size_of expression."""
+        task = IntervalVar(size=(5, 20), name="task")
+        expr = size_of(task)
+
+        assert expr.expr_type == ExprType.SIZE_OF
+        assert expr.interval == task
+
+    def test_length_of(self):
+        """Test length_of expression."""
+        task = IntervalVar(size=10, length=(8, 12), name="task")
+        expr = length_of(task)
+
+        assert expr.expr_type == ExprType.LENGTH_OF
+        assert expr.interval == task
+
+    def test_presence_of(self):
+        """Test presence_of expression."""
+        task = IntervalVar(size=10, optional=True, name="task")
+        expr = presence_of(task)
+
+        assert expr.expr_type == ExprType.PRESENCE_OF
+        assert expr.interval == task
+
+
+class TestOverlapLength:
+    """Tests for overlap_length expression."""
+
+    def test_overlap_length(self):
+        """Test overlap_length expression."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = overlap_length(task1, task2)
+
+        assert expr.expr_type == ExprType.OVERLAP_LENGTH
+        assert len(expr.operands) == 2
+
+    def test_overlap_length_with_absent_value(self):
+        """Test overlap_length with custom absent value."""
+        task1 = IntervalVar(size=10, optional=True, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = overlap_length(task1, task2, absent_value=-1)
+
+        assert expr.absent_value == -1
+
+
+class TestArithmeticOperators:
+    """Tests for arithmetic operators on expressions."""
+
+    def test_addition(self):
+        """Test expression addition."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task) + 5
+
+        assert expr.expr_type == ExprType.ADD
+        assert len(expr.operands) == 2
+
+    def test_addition_two_expressions(self):
+        """Test adding two expressions."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = start_of(task1) + end_of(task2)
+
+        assert expr.expr_type == ExprType.ADD
+
+    def test_right_addition(self):
+        """Test right addition (int + expr)."""
+        task = IntervalVar(size=10, name="task")
+        expr = 5 + start_of(task)
+
+        assert expr.expr_type == ExprType.ADD
+
+    def test_subtraction(self):
+        """Test expression subtraction."""
+        task = IntervalVar(size=10, name="task")
+        expr = end_of(task) - start_of(task)
+
+        assert expr.expr_type == ExprType.SUB
+
+    def test_right_subtraction(self):
+        """Test right subtraction (int - expr)."""
+        task = IntervalVar(size=10, name="task")
+        expr = 100 - end_of(task)
+
+        assert expr.expr_type == ExprType.SUB
+        # First operand should be the constant
+        assert expr.operands[0].value == 100
+
+    def test_multiplication(self):
+        """Test expression multiplication."""
+        task = IntervalVar(size=10, name="task")
+        expr = size_of(task) * 2
+
+        assert expr.expr_type == ExprType.MUL
+
+    def test_division(self):
+        """Test expression division."""
+        task = IntervalVar(size=10, name="task")
+        expr = size_of(task) / 2
+
+        assert expr.expr_type == ExprType.DIV
+
+    def test_negation(self):
+        """Test expression negation."""
+        task = IntervalVar(size=10, name="task")
+        expr = -start_of(task)
+
+        assert expr.expr_type == ExprType.NEG
+        assert len(expr.operands) == 1
+
+    def test_absolute(self):
+        """Test absolute value."""
+        task = IntervalVar(size=10, name="task")
+        expr = abs(start_of(task) - 50)
+
+        assert expr.expr_type == ExprType.ABS
+
+    def test_chained_arithmetic(self):
+        """Test chained arithmetic operations."""
+        task = IntervalVar(size=10, name="task")
+        expr = (end_of(task) - start_of(task)) * 2 + 5
+
+        assert expr.expr_type == ExprType.ADD
+
+
+class TestComparisonOperators:
+    """Tests for comparison operators."""
+
+    def test_equality(self):
+        """Test equality comparison."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=10, name="task2")
+        expr = start_of(task1) == start_of(task2)
+
+        assert expr.expr_type == ExprType.EQ
+        assert expr.is_comparison()
+
+    def test_equality_with_constant(self):
+        """Test equality with constant."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task) == 0
+
+        assert expr.expr_type == ExprType.EQ
+
+    def test_inequality(self):
+        """Test inequality comparison."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task) != 0
+
+        assert expr.expr_type == ExprType.NE
+
+    def test_less_than(self):
+        """Test less than comparison."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=10, name="task2")
+        expr = end_of(task1) < start_of(task2)
+
+        assert expr.expr_type == ExprType.LT
+
+    def test_less_equal(self):
+        """Test less than or equal comparison."""
+        task = IntervalVar(size=10, name="task")
+        expr = end_of(task) <= 100
+
+        assert expr.expr_type == ExprType.LE
+
+    def test_greater_than(self):
+        """Test greater than comparison."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task) > 10
+
+        assert expr.expr_type == ExprType.GT
+
+    def test_greater_equal(self):
+        """Test greater than or equal comparison."""
+        task = IntervalVar(size=10, name="task")
+        expr = size_of(task) >= 5
+
+        assert expr.expr_type == ExprType.GE
+
+
+class TestMinMaxExpressions:
+    """Tests for min/max expressions."""
+
+    def test_expr_min(self):
+        """Test minimum of expressions."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = expr_min(end_of(task1), end_of(task2))
+
+        assert expr.expr_type == ExprType.MIN
+        assert len(expr.operands) == 2
+
+    def test_expr_min_multiple(self):
+        """Test minimum of multiple expressions."""
+        tasks = [IntervalVar(size=10, name=f"t{i}") for i in range(3)]
+        expr = expr_min(end_of(tasks[0]), end_of(tasks[1]), end_of(tasks[2]))
+
+        assert expr.expr_type == ExprType.MIN
+        assert len(expr.operands) == 3
+
+    def test_expr_max(self):
+        """Test maximum of expressions."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = expr_max(end_of(task1), end_of(task2))
+
+        assert expr.expr_type == ExprType.MAX
+        assert len(expr.operands) == 2
+
+    def test_expr_min_error_single_arg(self):
+        """Test error when min has single argument."""
+        task = IntervalVar(size=10, name="task")
+        with pytest.raises(ValueError, match="at least 2 arguments"):
+            expr_min(end_of(task))
+
+    def test_expr_max_error_single_arg(self):
+        """Test error when max has single argument."""
+        task = IntervalVar(size=10, name="task")
+        with pytest.raises(ValueError, match="at least 2 arguments"):
+            expr_max(end_of(task))
+
+
+class TestExpressionUtilities:
+    """Tests for expression utilities."""
+
+    def test_get_intervals(self):
+        """Test getting all intervals from expression."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = end_of(task1) - start_of(task2)
+
+        intervals = expr.get_intervals()
+        assert len(intervals) == 2
+        assert task1 in intervals
+        assert task2 in intervals
+
+    def test_get_intervals_nested(self):
+        """Test getting intervals from deeply nested expression."""
+        task1 = IntervalVar(size=10, name="task1")
+        task2 = IntervalVar(size=15, name="task2")
+        expr = (end_of(task1) + start_of(task2)) * 2 - 5
+
+        intervals = expr.get_intervals()
+        assert len(intervals) == 2
+
+    def test_is_comparison(self):
+        """Test is_comparison method."""
+        task = IntervalVar(size=10, name="task")
+
+        assert not start_of(task).is_comparison()
+        assert (start_of(task) == 0).is_comparison()
+        assert (start_of(task) < 10).is_comparison()
+
+    def test_hashable(self):
+        """Test that expressions are hashable."""
+        task = IntervalVar(size=10, name="task")
+        expr1 = start_of(task)
+        expr2 = end_of(task)
+
+        s = {expr1, expr2}
+        assert len(s) == 2
+
+    def test_repr(self):
+        """Test string representation."""
+        task = IntervalVar(size=10, name="task")
+
+        assert "start_of(task)" in repr(start_of(task))
+        assert "end_of(task)" in repr(end_of(task))
+        assert "size_of(task)" in repr(size_of(task))
+        assert "presence_of(task)" in repr(presence_of(task))
+
+    def test_repr_arithmetic(self):
+        """Test repr for arithmetic expressions."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task) + 5
+
+        repr_str = repr(expr)
+        assert "+" in repr_str
+
+    def test_repr_comparison(self):
+        """Test repr for comparison expressions."""
+        task = IntervalVar(size=10, name="task")
+        expr = start_of(task) <= 100
+
+        repr_str = repr(expr)
+        assert "<=" in repr_str
