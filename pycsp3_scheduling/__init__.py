@@ -10,7 +10,7 @@ This package extends pycsp3 with comprehensive scheduling support including:
 - Sequence consistency constraints (same_sequence, same_common_subsequence)
 - Sequence accessor expressions (start_of_next, start_of_prev, etc.)
 - Cumulative functions (pulse, step_at_start, step_at_end, Cumulative)
-- State functions and constraints [future]
+- State functions (StateFunction, TransitionMatrix, always_equal, etc.)
 - XCSP3 scheduling extension output [future]
 
 """
@@ -96,6 +96,16 @@ from pycsp3_scheduling.functions import (
     step_at_start,
 )
 
+# State Functions
+from pycsp3_scheduling.functions import (
+    StateFunction,
+    StateConstraint,
+    TransitionMatrix,
+    always_constant,
+    always_equal,
+    always_no_state,
+)
+
 __all__ = [
     "__version__",
     # Variables
@@ -169,4 +179,11 @@ __all__ = [
     "always_in",
     "height_at_start",
     "height_at_end",
+    # State Functions
+    "StateFunction",
+    "StateConstraint",
+    "TransitionMatrix",
+    "always_equal",
+    "always_constant",
+    "always_no_state",
 ]
