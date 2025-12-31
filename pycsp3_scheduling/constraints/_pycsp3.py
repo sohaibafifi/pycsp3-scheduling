@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 _start_vars: dict[IntervalVar, Any] = {}
 _length_vars: dict[IntervalVar, Any] = {}
+_presence_vars: dict[IntervalVar, Any] = {}
 
 
 def _var_id(prefix: str, interval: IntervalVar) -> str:
@@ -107,10 +108,21 @@ def _require_pycsp3():
     return Var, Variable
 
 
+def presence_var(interval: IntervalVar) -> Any:
+    """Return (or create) a pycsp3 boolean variable for the interval presence."""
+    if not interval.optional:
+        # Non-optional intervals are always present - return constant 1
+        return 1
+    if interval in _presence_vars:
+        return _presence_vars[interval]
+    Var, _ = _require_pycsp3()
+    var = Var(dom={0, 1}, id=_var_id("iv_p_", interval))
+    _presence_vars[interval] = var
+    return var
+
+
 def start_var(interval: IntervalVar) -> Any:
     """Return (or create) a pycsp3 variable for the interval start time."""
-    if interval.optional:
-        raise NotImplementedError("Optional intervals are not supported yet.")
     if interval in _start_vars:
         return _start_vars[interval]
     Var, _ = _require_pycsp3()
@@ -139,3 +151,4 @@ def clear_pycsp3_cache() -> None:
     """Clear cached pycsp3 variables for intervals."""
     _start_vars.clear()
     _length_vars.clear()
+    _presence_vars.clear()

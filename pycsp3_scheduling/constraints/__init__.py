@@ -24,13 +24,17 @@ from pycsp3_scheduling.constraints.precedence import (
     start_before_start,
 )
 
+# Grouping constraints
+from pycsp3_scheduling.constraints.grouping import (
+    alternative,
+    span,
+    synchronize,
+)
+
 # Sequence constraints
 from pycsp3_scheduling.constraints.sequence import SeqNoOverlap
 
 # To be implemented:
-# from pycsp3_scheduling.constraints.grouping import (
-#     span, alternative, synchronize, isomorphism,
-# )
 # from pycsp3_scheduling.constraints.cumulative import (
 #     cumul_range,
 # )
@@ -52,6 +56,10 @@ __all__ = [
     "start_before_end",
     "end_before_start",
     "end_before_end",
+    # Grouping constraints
+    "span",
+    "alternative",
+    "synchronize",
     # Sequence constraints
     "SeqNoOverlap",
 ]
