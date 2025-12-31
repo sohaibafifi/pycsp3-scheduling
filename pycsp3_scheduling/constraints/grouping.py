@@ -262,7 +262,10 @@ def alternative(
 
     # Sum of alternative presences equals cardinality when main is present
     # sum(alt_presences) == cardinality * main_presence
-    sum_presences = Node.build(TypeNode.ADD, *alt_presences)
+    if len(alt_presences) == 1:
+        sum_presences = alt_presences[0]
+    else:
+        sum_presences = Node.build(TypeNode.ADD, *alt_presences)
     if main.optional:
         # sum(alt_presences) == cardinality * main_presence
         rhs = Node.build(TypeNode.MUL, cardinality, main_presence)
