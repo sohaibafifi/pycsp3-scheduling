@@ -20,7 +20,7 @@ pip install -e ".[dev]"
 
 ## Requirements
 
-- **Python** >= 3.9
+- **Python** >= 3.10
 - **pycsp3** >= 2.5 (constraint programming framework)
 - **lxml** >= 4.9 (for XCSP3 XML generation)
 

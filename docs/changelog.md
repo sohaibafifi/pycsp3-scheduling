@@ -64,5 +64,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 
 - First public release
-- Requires Python >= 3.9
+- Requires Python >= 3.10
 - Requires pycsp3 >= 2.5

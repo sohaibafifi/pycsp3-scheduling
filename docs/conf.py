@@ -107,8 +107,8 @@ html_theme_options = {
 }
 
 # Additional HTML settings
-html_title = "pycsp3-scheduling"
-html_short_title = "pycsp3-scheduling"
+html_title = "PyCSP<sup>3</sup>-Scheduling"
+html_short_title = "PyCSP3-Scheduling"
 html_show_sourcelink = False
 html_copy_source = False
 

@@ -31,7 +31,7 @@ Remaining Work ⏳
 
 - Achieve 90%+ code coverage
 - Integration tests and benchmarks
-- Python 3.9-3.12 compatibility validation
+- Python 3.10-3.12 compatibility validation
 
 **Examples**
 

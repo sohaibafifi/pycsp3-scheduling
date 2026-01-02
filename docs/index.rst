@@ -1,7 +1,10 @@
-pycsp3-scheduling Documentation
+|pycsp3-Scheduling| Documentation
 =================================
+.. |pycsp3-Scheduling| replace:: PyCSP\ :sup:`3`\ -Scheduling
+.. |pycsp3| replace:: PyCSP\ :sup:`3`
+.. _pycsp3: https://pycsp.org
 
-**pycsp3-scheduling** is a scheduling extension for `pycsp3 <https://pycsp.org>`_
+|pycsp3-Scheduling| is a scheduling extension for |pycsp3|_
 that provides interval variables, sequence variables, and comprehensive scheduling
 constraints for modeling complex scheduling problems.
 
@@ -52,6 +55,7 @@ Getting Started
    user_guide/installation
    user_guide/getting_started
    user_guide/scheduling_concepts
+   cheatsheet
    user_guide/modeling_guide
 
 Tutorials
