@@ -12,6 +12,7 @@ Scheduling extension for [pycsp3](https://pycsp.org) with interval variables, se
 - **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
 - **State Functions**: Model resource states with transitions
 - **XCSP3 Extension**: Output scheduling models in extended XCSP3 format
+- **Visualization**: Gantt charts and resource profiles
 
 ## Installation
 

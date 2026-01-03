@@ -291,15 +291,26 @@ class TestCumulConstraint:
         assert constraint.bound == 0
 
     def test_cumul_range_constraint(self):
-        """Test cumul_range creates range constraint."""
+        """Test cumul_range with min=0 returns pycsp3-compatible constraint."""
+        from pycsp3.classes.entities import ECtr
+
         task = IntervalVar(size=10, name="task")
         cumul = CumulFunction([pulse(task, 2)])
 
+        # With min_val=0, returns pycsp3 ECtr (same as cumul <= max)
         constraint = cumul_range(cumul, 0, 5)
+        assert isinstance(constraint, ECtr)
 
+    def test_cumul_range_with_nonzero_min(self):
+        """Test cumul_range with non-zero min returns CumulConstraint."""
+        task = IntervalVar(size=10, name="task")
+        cumul = CumulFunction([pulse(task, 2)])
+
+        # With min_val > 0, returns CumulConstraint
+        constraint = cumul_range(cumul, 1, 5)
         assert isinstance(constraint, CumulConstraint)
         assert constraint.constraint_type == CumulConstraintType.RANGE
-        assert constraint.min_bound == 0
+        assert constraint.min_bound == 1
         assert constraint.max_bound == 5
 
     def test_cumul_range_with_cumul_function(self):

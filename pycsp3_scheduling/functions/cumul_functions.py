@@ -638,7 +638,7 @@ def step_at_end(
 # =============================================================================
 
 
-def cumul_range(cumul: CumulFunction, min_val: int, max_val: int) -> CumulConstraint:
+def cumul_range(cumul: CumulFunction, min_val: int, max_val: int):
     """
     Constrain a cumulative function to stay within a range.
 
@@ -651,7 +651,8 @@ def cumul_range(cumul: CumulFunction, min_val: int, max_val: int) -> CumulConstr
         max_val: Maximum allowed value.
 
     Returns:
-        A CumulConstraint representing the range constraint.
+        A pycsp3-compatible constraint when possible (for simple pulse-based
+        cumulative functions with min_val=0), otherwise a CumulConstraint.
 
     Raises:
         TypeError: If cumul is not a CumulFunction.
@@ -669,6 +670,11 @@ def cumul_range(cumul: CumulFunction, min_val: int, max_val: int) -> CumulConstr
     if min_val > max_val:
         raise ValueError(f"min_val ({min_val}) cannot exceed max_val ({max_val})")
 
+    # For simple case min_val=0, use the <= operator which returns pycsp3 constraint
+    if min_val == 0:
+        return cumul <= max_val
+
+    # For general range constraints, return CumulConstraint
     return CumulConstraint(
         cumul=cumul,
         constraint_type=CumulConstraintType.RANGE,

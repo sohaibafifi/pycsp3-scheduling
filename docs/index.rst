@@ -22,6 +22,7 @@ Key Features
 * **Cumulative Functions**: Resource capacity modeling with ``pulse``, ``step_at_*``
 * **State Functions**: Discrete resource states with transition matrices
 * **XCSP3 Compatible**: Output scheduling models in XCSP3 format
+* **Visualization**: Gantt charts and resource profiles
 
 Quick Example
 -------------
