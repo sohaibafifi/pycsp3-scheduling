@@ -14,6 +14,7 @@ An interval variable represents a task/activity with:
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Union
@@ -47,12 +48,26 @@ class IntervalVar:
         optional: If True, the interval may be absent from the solution.
         _id: Internal unique identifier.
 
+    Note:
+        When using intensity functions, you should explicitly set ``length`` bounds.
+        At lower intensity values, more elapsed time (length) is needed to complete
+        the same amount of work (size). For example, at 50% intensity, a task with
+        size=10 needs length=20. If length is not set, it defaults to size, which
+        may be too restrictive. A warning is issued in this case.
+
     Example:
         >>> task = IntervalVar(size=10, name="task1")
         >>> optional_task = IntervalVar(size=(5, 20), optional=True, name="opt")
         >>> bounded_task = IntervalVar(start=(0, 100), end=(10, 200), size=15)
-        >>> intensity = [(INTERVAL_MIN, 100), (10, 50)]
-        >>> variable_rate = IntervalVar(size=10, intensity=intensity, granularity=100)
+        >>> # With intensity: explicitly set length bounds to allow larger values
+        >>> intensity = [(INTERVAL_MIN, 100), (10, 50)]  # 100% until t=10, then 50%
+        >>> variable_rate = IntervalVar(
+        ...     size=10,
+        ...     length=(10, 30),  # Allow length up to 30 for lower intensity
+        ...     intensity=intensity,
+        ...     granularity=100,
+        ...     name="variable_rate"
+        ... )
     """
 
     name: str | None = None
@@ -74,6 +89,8 @@ class IntervalVar:
         self.start = self._normalize_bound(self.start)
         self.end = self._normalize_bound(self.end)
         self.size = self._normalize_bound(self.size)
+        # Track if length was explicitly provided
+        length_was_explicit = self.length is not None
         if self.length is not None:
             self.length = self._normalize_bound(self.length)
         else:
@@ -81,6 +98,17 @@ class IntervalVar:
             self.length = self.size
         if self.intensity is not None:
             self.intensity = self._normalize_intensity(self.intensity)
+            # Warn if intensity is set but length was not explicitly provided
+            # With intensity, the required length often exceeds size (at low intensity)
+            if not length_was_explicit and self.intensity:
+                warnings.warn(
+                    f"IntervalVar '{self.name or 'unnamed'}' has intensity but no explicit "
+                    f"length bounds. With variable intensity, length may need to exceed size. "
+                    f"Consider setting length=(min, max) to allow larger values. "
+                    f"Current length defaults to size={self.size}.",
+                    UserWarning,
+                    stacklevel=2,
+                )
         self._validate_granularity()
 
         # Assign unique ID if not set

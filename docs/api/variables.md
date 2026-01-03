@@ -76,9 +76,11 @@ flexible = IntervalVar(size=(5, 20), name="flexible_task")
 optional = IntervalVar(size=10, optional=True, name="optional_task")
 
 # Interval with stepwise intensity
-intensity = [(INTERVAL_MIN, 100), (10, 50)]
+# Important: set explicit length bounds when using intensity!
+intensity = [(INTERVAL_MIN, 100), (10, 50)]  # 100% until t=10, then 50%
 rate_scaled = IntervalVar(
     size=10,
+    length=(10, 25),  # allow larger length for lower intensity
     intensity=intensity,
     granularity=100,
     name="rate_scaled"

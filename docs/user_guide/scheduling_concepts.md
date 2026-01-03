@@ -61,11 +61,32 @@ The default value is 0 up to the first step. To change this default value, set
 the first step to `(INTERVAL_MIN, value)`. Consecutive steps with the same value
 are merged so the function is represented with the minimal number of steps.
 
+The fundamental equation relating size, length, and intensity is:
+
+```
+size x granularity = sum of intensity(t) for t in [start, start + length)
+```
+
+> **Important:** When using intensity, you should explicitly set `length` bounds.
+> At lower intensity values, more elapsed time (length) is needed to complete
+> the same amount of work (size). For example, at 50% intensity, a task with
+> `size=10` needs `length=20`. If `length` is not set, it defaults to `size`,
+> which may be too restrictive and cause infeasible schedules.
+
 ```python
 from pycsp3_scheduling import IntervalVar, INTERVAL_MIN
 
+# Intensity: 100% until t=5, 80% until t=10, then 60%
 intensity = [(INTERVAL_MIN, 100), (5, 80), (10, 60)]
-task = IntervalVar(size=10, intensity=intensity, granularity=100, name="task")
+
+# Set explicit length bounds to allow longer durations at low intensity
+task = IntervalVar(
+    size=10,
+    length=(10, 25),  # Allow length up to 25 for lower intensity periods
+    intensity=intensity,
+    granularity=100,
+    name="task"
+)
 ```
 
 ## Sequence Variables

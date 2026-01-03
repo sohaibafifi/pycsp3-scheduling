@@ -115,11 +115,12 @@ class TestIntervalVar:
     def test_intensity_normalization(self):
         """Test intensity step normalization and merging."""
         intensity = [(0, 0), (5, 0), (7, 3), (10, 3), (12, 1)]
-        task = IntervalVar(size=10, intensity=intensity, name="task")
+        # Set explicit length to avoid warning
+        task = IntervalVar(size=10, length=(10, 50), intensity=intensity, name="task")
         assert task.intensity == [(7, 3), (12, 1)]
 
         intensity = [(INTERVAL_MIN, 5), (10, 5), (20, 1)]
-        task = IntervalVar(size=10, intensity=intensity, name="task2")
+        task = IntervalVar(size=10, length=(10, 50), intensity=intensity, name="task2")
         assert task.intensity == [(0, 5), (20, 1)]
 
     def test_empty_intensity_becomes_none(self):

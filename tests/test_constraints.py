@@ -549,3 +549,317 @@ class TestPrecedenceIntegration:
             start_at_start(task1, task2),
             end_before_start(task2, task3),
         )
+
+
+# =============================================================================
+# Intensity Discretization Tests
+# =============================================================================
+
+
+class TestIntensityDiscretization:
+    """
+    Tests for intensity function discretization.
+
+    Intensity functions model variable work rates over time. The key equation is:
+        size * granularity = sum of intensity(t) for t in [start, start + length)
+
+    These tests verify the discretization logic that converts this relationship
+    into table constraints for XCSP3 export.
+    """
+
+    def test_intensity_at_basic(self):
+        """Test intensity evaluation at various time points."""
+        from pycsp3_scheduling.constraints._pycsp3 import _intensity_at
+
+        # Steps: 0 until t=5, then 80, then 50 after t=10
+        steps = [(5, 80), (10, 50)]
+
+        # Before first step: default value is 0
+        assert _intensity_at(steps, 0) == 0
+        assert _intensity_at(steps, 4) == 0
+
+        # At and after first step
+        assert _intensity_at(steps, 5) == 80
+        assert _intensity_at(steps, 9) == 80
+
+        # At and after second step
+        assert _intensity_at(steps, 10) == 50
+        assert _intensity_at(steps, 100) == 50
+
+    def test_intensity_at_single_step(self):
+        """Test intensity with a single step starting at 0."""
+        from pycsp3_scheduling.constraints._pycsp3 import _intensity_at
+
+        # Constant 100% intensity from the start
+        steps = [(0, 100)]
+
+        assert _intensity_at(steps, 0) == 100
+        assert _intensity_at(steps, 50) == 100
+
+    def test_integrate_intensity_constant(self):
+        """Test integration with constant intensity."""
+        from pycsp3_scheduling.constraints._pycsp3 import _integrate_intensity
+
+        # Constant 100% intensity
+        steps = [(0, 100)]
+
+        # Integral over [0, 10) = 100 * 10 = 1000
+        assert _integrate_intensity(steps, 0, 10) == 1000
+
+        # Integral over [5, 15) = 100 * 10 = 1000
+        assert _integrate_intensity(steps, 5, 15) == 1000
+
+    def test_integrate_intensity_step_change(self):
+        """Test integration across a step boundary."""
+        from pycsp3_scheduling.constraints._pycsp3 import _integrate_intensity
+
+        # 100% until t=10, then 50%
+        steps = [(0, 100), (10, 50)]
+
+        # Integral over [0, 20):
+        # [0, 10): 100 * 10 = 1000
+        # [10, 20): 50 * 10 = 500
+        # Total: 1500
+        assert _integrate_intensity(steps, 0, 20) == 1500
+
+        # Integral over [5, 15):
+        # [5, 10): 100 * 5 = 500
+        # [10, 15): 50 * 5 = 250
+        # Total: 750
+        assert _integrate_intensity(steps, 5, 15) == 750
+
+    def test_integrate_intensity_empty_range(self):
+        """Test integration with empty or invalid range."""
+        from pycsp3_scheduling.constraints._pycsp3 import _integrate_intensity
+
+        steps = [(0, 100)]
+
+        # Empty range
+        assert _integrate_intensity(steps, 5, 5) == 0
+
+        # Negative range (end < start)
+        assert _integrate_intensity(steps, 10, 5) == 0
+
+    def test_find_length_for_work_constant_intensity(self):
+        """Test finding length with constant intensity."""
+        from pycsp3_scheduling.constraints._pycsp3 import _find_length_for_work
+
+        # Constant 100% intensity
+        steps = [(0, 100)]
+
+        # Need 1000 work units at 100 intensity/time -> 10 time units
+        assert _find_length_for_work(steps, 0, 1000, 100) == 10
+
+        # Starting at t=5 doesn't change anything (constant intensity)
+        assert _find_length_for_work(steps, 5, 1000, 100) == 10
+
+    def test_find_length_for_work_variable_intensity(self):
+        """Test finding length when intensity varies."""
+        from pycsp3_scheduling.constraints._pycsp3 import _find_length_for_work
+
+        # 100% until t=10, then 50%
+        steps = [(0, 100), (10, 50)]
+
+        # Starting at t=0, need 1000 work units:
+        # At 100 intensity, 10 time units gives exactly 1000
+        assert _find_length_for_work(steps, 0, 1000, 100) == 10
+
+        # Starting at t=5, need 1000 work units:
+        # [5, 10): 5 * 100 = 500
+        # Need 500 more at 50 intensity -> 10 more time units
+        # Total length: 5 + 10 = 15
+        assert _find_length_for_work(steps, 5, 1000, 100) == 15
+
+        # Starting at t=10 (in 50% zone), need 1000 work units:
+        # At 50 intensity, need 20 time units
+        assert _find_length_for_work(steps, 10, 1000, 100) == 20
+
+    def test_find_length_for_work_zero_intensity(self):
+        """Test that zero intensity returns None (can't complete work)."""
+        from pycsp3_scheduling.constraints._pycsp3 import _find_length_for_work
+
+        # No steps means 0 intensity everywhere
+        steps = []
+
+        # Can't complete any work with 0 intensity
+        assert _find_length_for_work(steps, 0, 100, 1000) is None
+
+    def test_find_length_for_work_exceeds_max(self):
+        """Test when work can't be completed within max_length."""
+        from pycsp3_scheduling.constraints._pycsp3 import _find_length_for_work
+
+        # Low intensity
+        steps = [(0, 10)]
+
+        # Need 1000 work at intensity 10 -> would need 100 time units
+        # But max_length is 50
+        assert _find_length_for_work(steps, 0, 1000, 50) is None
+
+    def test_compute_intensity_table_fixed_size(self):
+        """Test table computation for fixed-size interval."""
+        from pycsp3_scheduling.constraints._pycsp3 import _compute_intensity_table
+
+        # Create interval with intensity
+        # size=10, granularity=100 -> need 1000 work units
+        # Intensity: 100% until t=10, then 50%
+        #
+        # IMPORTANT: length must be explicitly set to allow values larger than size
+        # because at 50% intensity, length will be 20 (double the size)
+        intensity = [(0, 100), (10, 50)]
+        task = IntervalVar(
+            size=10,
+            length=(10, 30),  # Allow length up to 30 for lower intensity periods
+            intensity=intensity,
+            granularity=100,
+            start=(0, 20),
+            end=(0, 50),
+            name="task",
+        )
+
+        table = _compute_intensity_table(task, horizon=50)
+
+        assert table is not None
+        assert len(table) > 0
+
+        # All entries should be (start, length) tuples
+        for entry in table:
+            assert len(entry) == 2
+            start, length = entry
+            assert isinstance(start, int)
+            assert isinstance(length, int)
+
+        # Check specific values:
+        # At start=0, intensity is 100, so length=10
+        assert (0, 10) in table
+
+        # At start=5, need to work across the boundary:
+        # [5,10): 5*100=500, then need 500 more at 50 -> 10 units
+        # Total length = 5 + 10 = 15
+        assert (5, 15) in table
+
+        # At start=10, intensity is 50, so length=20
+        assert (10, 20) in table
+
+    def test_compute_intensity_table_variable_size(self):
+        """Test table computation for variable-size interval."""
+        from pycsp3_scheduling.constraints._pycsp3 import _compute_intensity_table
+
+        # Variable size interval with explicit length bounds
+        intensity = [(0, 100)]
+        task = IntervalVar(
+            size=(5, 10),
+            length=(5, 15),  # Explicit length bounds
+            intensity=intensity,
+            granularity=100,
+            start=(0, 10),
+            end=(0, 30),
+            name="task",
+        )
+
+        table = _compute_intensity_table(task, horizon=30)
+
+        assert table is not None
+
+        # Entries should be (start, size, length) triples
+        for entry in table:
+            assert len(entry) == 3
+            start, size, length = entry
+            # At constant 100 intensity, length should equal size
+            assert length == size
+
+    def test_compute_intensity_table_no_intensity(self):
+        """Test that None is returned when no intensity is defined."""
+        from pycsp3_scheduling.constraints._pycsp3 import _compute_intensity_table
+
+        task = IntervalVar(size=10, name="task")
+
+        table = _compute_intensity_table(task, horizon=100)
+
+        assert table is None
+
+    def test_length_var_with_intensity(self):
+        """Test that length_var posts intensity constraint."""
+        from pycsp3_scheduling.constraints._pycsp3 import (
+            _intensity_constraints_posted,
+            length_var,
+        )
+
+        # Intensity: 100% until t=10, then 50%
+        # With size=10 and granularity=100, at 50% we need length=20
+        intensity = [(0, 100), (10, 50)]
+        task = IntervalVar(
+            size=10,
+            length=(10, 30),  # Allow larger lengths for lower intensity
+            intensity=intensity,
+            granularity=100,
+            start=(0, 20),
+            end=(0, 60),
+            name="task",
+        )
+
+        # Get the length variable - this should post the constraint
+        length = length_var(task)
+
+        # Verify constraint was posted
+        assert task in _intensity_constraints_posted
+
+        # Verify length is a variable (not a constant)
+        assert hasattr(length, "id")
+
+    def test_length_value_with_intensity_returns_variable(self):
+        """Test that length_value returns a variable when intensity is set."""
+        from pycsp3_scheduling.constraints._pycsp3 import length_value
+
+        # Constant 100% intensity - length will equal size
+        intensity = [(0, 100)]
+        task = IntervalVar(
+            size=10,
+            length=(10, 20),  # Explicit length bounds
+            intensity=intensity,
+            granularity=100,
+            start=(0, 50),
+            end=(0, 70),
+            name="task",
+        )
+
+        result = length_value(task)
+
+        # Should be a variable, not a constant
+        assert hasattr(result, "id")
+
+    def test_length_value_without_intensity_fixed(self):
+        """Test that length_value returns constant for fixed-size without intensity."""
+        from pycsp3_scheduling.constraints._pycsp3 import length_value
+
+        task = IntervalVar(size=10, name="task")
+
+        result = length_value(task)
+
+        # Should be a constant (integer)
+        assert result == 10
+
+    def test_intensity_constraint_posted_once(self):
+        """Test that intensity constraint is only posted once per interval."""
+        from pycsp3_scheduling.constraints._pycsp3 import (
+            _intensity_constraints_posted,
+            length_var,
+        )
+
+        # Constant 100% intensity
+        intensity = [(0, 100)]
+        task = IntervalVar(
+            size=10,
+            length=(10, 20),  # Explicit length bounds
+            intensity=intensity,
+            granularity=100,
+            start=(0, 50),
+            end=(0, 70),
+            name="task",
+        )
+
+        # Call length_var twice
+        length_var(task)
+        length_var(task)
+
+        # Should only be tracked once
+        assert task in _intensity_constraints_posted
