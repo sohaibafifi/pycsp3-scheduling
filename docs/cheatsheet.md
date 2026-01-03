@@ -178,4 +178,56 @@ if solve() in (SAT, OPTIMUM):
         print("optional task absent")
     else:
         print(opt_result)
+
+    print(model_statistics())
+    print(solution_statistics())
+```
+
+## 6) Visualizing Schedules
+
+```python
+from pycsp3_scheduling import visu
+
+if visu.is_visu_enabled():
+    visu.timeline("Job Shop Schedule", origin=0, horizon=100)
+
+    # Display intervals on machines
+    visu.panel("Machine 1")
+    visu.interval(0, 10, "Job1_Op1", color=0)
+    visu.interval(15, 30, "Job2_Op1", color=1)
+
+    visu.panel("Machine 2")
+    visu.interval(10, 25, "Job1_Op2", color=0)
+    visu.interval(0, 12, "Job2_Op2", color=1)
+
+    # Display cumulative resource usage
+    visu.panel("Workers")
+    visu.segment(0, 10, 2)   # 2 workers from t=0 to t=10
+    visu.segment(10, 25, 3)  # 3 workers from t=10 to t=25
+    visu.segment(25, 30, 1)  # 1 worker from t=25 to t=30
+
+    # Display pauses/maintenance
+    visu.panel("Machine 3")
+    visu.pause(20, 25, "Maintenance")
+    visu.interval(0, 20, "Task", color=2)
+    visu.interval(25, 40, "Task", color=2)
+
+    visu.show()
+```
+
+### Displaying Solved Variables
+
+```python
+# After solving, display interval variables with their values
+if solve() in (SAT, OPTIMUM):
+    visu.timeline("Solution")
+
+    for machine_id, seq in enumerate(machines):
+        visu.panel(f"Machine {machine_id}")
+        for task in seq.intervals:
+            val = interval_value(task)
+            if val is not None:
+                visu.interval(val.start, val.end, task.name, color=machine_id)
+
+    visu.show()
 ```

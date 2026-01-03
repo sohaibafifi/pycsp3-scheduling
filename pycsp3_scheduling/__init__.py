@@ -57,9 +57,13 @@ from pycsp3_scheduling.expressions import (
 # Interop
 from pycsp3_scheduling.interop import (
     IntervalValue,
+    ModelStatistics,
+    SolutionStatistics,
     end_time,
     interval_value,
+    model_statistics,
     presence_time,
+    solution_statistics,
     start_time,
 )
 
@@ -112,6 +116,9 @@ from pycsp3_scheduling.functions import (
     always_no_state,
 )
 
+# Visualization (imported as submodule)
+from pycsp3_scheduling import visu
+
 __all__ = [
     "__version__",
     # Variables
@@ -150,6 +157,10 @@ __all__ = [
     "presence_time",
     "interval_value",
     "IntervalValue",
+    "model_statistics",
+    "solution_statistics",
+    "ModelStatistics",
+    "SolutionStatistics",
     # Constraints - Exact timing
     "start_at_start",
     "start_at_end",
@@ -195,4 +206,6 @@ __all__ = [
     "always_equal",
     "always_constant",
     "always_no_state",
+    # Visualization
+    "visu",
 ]

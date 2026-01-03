@@ -58,14 +58,6 @@ Getting Started
    cheatsheet
    user_guide/modeling_guide
 
-Tutorials
----------
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Interactive Tutorials
-
-   tutorials/index
 
 API Reference
 -------------
@@ -84,12 +76,16 @@ Examples
 --------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Examples
 
-   examples/job_shop
-   examples/rcpsp
-   examples/flexible_job_shop
+
+   examples/job_shop_tutorial.ipynb
+   examples/rcpsp_tutorial.ipynb
+   examples/flexible_job_shop_tutorial.ipynb
+   examples/setup_times_tutorial.ipynb
+   examples/multi_resource_tutorial.ipynb
+   examples/spanning_sync_tutorial.ipynb
 
 Additional Resources
 --------------------

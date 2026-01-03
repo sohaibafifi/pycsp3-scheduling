@@ -26,6 +26,7 @@ extensions = [
     "sphinx.ext.viewcode",  # Add links to source code
     "sphinx.ext.intersphinx",  # Link to other projects' documentation
     "sphinx.ext.autosummary",  # Generate summary tables
+    "sphinx.ext.mathjax",  # Render math in notebooks/Markdown
     "myst_nb",  # Support for Markdown and Jupyter notebooks
     "sphinx_copybutton",  # Copy button for code blocks
 ]
@@ -33,6 +34,10 @@ extensions = [
 # MyST-NB settings
 nb_execution_mode = "off"  # Don't execute notebooks during build
 nb_render_image_options = {"align": "center"}
+myst_enable_extensions = [
+    "amsmath",
+    "dollarmath",
+]
 
 # Napoleon settings for docstrings
 napoleon_google_docstring = True

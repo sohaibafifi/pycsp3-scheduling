@@ -85,6 +85,9 @@ class SequenceVar:
         if self.name is None:
             self.name = f"_sequence_{self._id}"
 
+        # Register for model compilation/interop helpers
+        register_sequence(self)
+
     @staticmethod
     def _get_next_id() -> int:
         """Get next unique ID for sequence variables."""

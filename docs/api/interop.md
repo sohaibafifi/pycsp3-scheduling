@@ -33,12 +33,38 @@ Helper functions for bridging pycsp3-scheduling with pycsp3.
 .. autofunction:: pycsp3_scheduling.interop.interval_value
 ```
 
+### model_statistics
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.interop.model_statistics
+```
+
+### solution_statistics
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.interop.solution_statistics
+```
+
 ## Classes
 
 ### IntervalValue
 
 ```{eval-rst}
 .. autoclass:: pycsp3_scheduling.interop.IntervalValue
+   :members:
+```
+
+### ModelStatistics
+
+```{eval-rst}
+.. autoclass:: pycsp3_scheduling.interop.ModelStatistics
+   :members:
+```
+
+### SolutionStatistics
+
+```{eval-rst}
+.. autoclass:: pycsp3_scheduling.interop.SolutionStatistics
    :members:
 ```
 
@@ -50,6 +76,8 @@ Helper functions for bridging pycsp3-scheduling with pycsp3.
 | `end_time(interval)` | pycsp3 Expression | End time expression (start + length) |
 | `presence_time(interval)` | pycsp3 Variable | Presence variable (0/1) for optional intervals |
 | `interval_value(interval)` | IntervalValue or None | Solution values after solving |
+| `model_statistics()` | ModelStatistics | Counts for registered scheduling objects |
+| `solution_statistics(...)` | SolutionStatistics | Summary stats for solved intervals |
 
 ## Usage Examples
 
@@ -128,6 +156,36 @@ The `interval_value()` function returns an `IntervalValue` with the following fi
 (`result['start']`) for compatibility.
 
 For optional intervals that are absent, `interval_value()` returns `None`.
+
+## Statistics Examples
+
+```python
+from pycsp3 import solve, SAT, OPTIMUM, Maximum, minimize
+from pycsp3_scheduling import (
+    IntervalVar,
+    end_time,
+    interval_value,
+    model_statistics,
+    solution_statistics,
+)
+
+tasks = [IntervalVar(size=10, name=f"task{i}") for i in range(3)]
+objective = Maximum(end_time(t) for t in tasks)
+minimize(objective)
+
+print(model_statistics())
+
+if solve() in (SAT, OPTIMUM):
+    stats = solution_statistics(objective=objective)
+    print(stats)
+```
+
+Notes:
+- `model_statistics()` reports registered scheduling objects. Interval variables
+  and state functions are registered automatically; cumulative functions can be
+  registered explicitly with `register_cumul()` when needed.
+- `solution_statistics()` evaluates interval values, so call it after a
+  successful solve.
 
 ## Important Notes
 

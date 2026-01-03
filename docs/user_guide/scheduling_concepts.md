@@ -293,6 +293,17 @@ result = interval_value(task)
 print(f"start={result.start}, end={result.end}")
 ```
 
+You can also inspect model and solution statistics:
+
+```python
+from pycsp3_scheduling import model_statistics, solution_statistics
+
+print(model_statistics())
+print(solution_statistics())
+```
+
+Call `solution_statistics()` only after a successful solve.
+
 ## Optional Intervals Semantics
 
 When intervals are optional:

@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `start_time()`, `end_time()` for pycsp3 integration
   - `presence_time()` for optional interval handling
   - `interval_value()` for extracting solution values
+  - `IntervalValue` for attribute/dict-style interval results
+  - `model_statistics()` and `solution_statistics()` for model/solve stats
 
 - **Examples**
   - Job Shop Scheduling

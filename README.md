@@ -184,6 +184,7 @@ minimize(Maximum(end_time(t) for t in tasks))
 - Python >= 3.9
 - pycsp3 >= 2.5
 - lxml >= 4.9
+- matplotlib >= 3.7
 
 ## License
 
