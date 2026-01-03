@@ -182,10 +182,11 @@ minimize(Maximum(end_time(t) for t in tasks))
 
 ## Requirements
 
-- Python >= 3.9
+- Python >= 3.10
 - pycsp3 >= 2.5
 - lxml >= 4.9
-- matplotlib >= 3.7
+- matplotlib >= 3.7 (optional, for visualization)
+- java >= 8 (optional, for solving with ACE/Choco)
 
 ## License
 
