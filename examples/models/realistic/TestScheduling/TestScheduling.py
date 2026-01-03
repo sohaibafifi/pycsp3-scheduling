@@ -162,4 +162,4 @@ if __name__ == "__main__":
             machine = value(m[i])
             res_list = resources[i] if resources[i] else []
             res_str = f" resources={list(res_list)}" if res_list else ""
-            print(f"  Test {i:2d} on M{machine}: [{v['start']:4d}, {v['end']:4d}){res_str}")
+            print(f"  Test {i:2d} on M{machine}: [{v.start:4d}, {v.end:4d}){res_str}")

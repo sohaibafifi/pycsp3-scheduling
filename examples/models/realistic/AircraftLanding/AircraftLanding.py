@@ -118,5 +118,5 @@ if __name__ == "__main__":
             late = value(trd[i])
             status = f"early={early}" if early > 0 else (f"late={late}" if late > 0 else "on-time")
             print(
-                f"  Plane {i}: land at {v['start']} (target={target[i]}, window=[{earliest[i]},{latest[i]}]) {status}"
+                f"  Plane {i}: land at {v.start} (target={target[i]}, window=[{earliest[i]},{latest[i]}]) {status}"
             )

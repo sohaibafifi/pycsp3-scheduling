@@ -165,4 +165,4 @@ if __name__ == "__main__":
             res_usage = ", ".join(
                 f"R{k}={value(r[k][i])}" for k in range(nResources) if value(r[k][i]) > 0
             )
-            print(f"  Task {i:2d} (mode {mode}): [{v['start']:3d}, {v['end']:3d}) {res_usage}")
+            print(f"  Task {i:2d} (mode {mode}): [{v.start:3d}, {v.end:3d}) {res_usage}")

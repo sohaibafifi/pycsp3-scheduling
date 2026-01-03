@@ -100,8 +100,8 @@ if solve() in [SAT, OPTIMUM]:
             for idx, (m, d) in enumerate(jobs_data[j][o]):
                 v = interval_value(ops[j][o][idx])
                 if v is not None:  # This alternative was selected
-                    makespan = max(makespan, v['end'])
-                    print(f"  Op {o}: machine {m}, [{v['start']}-{v['end']}]")
+                    makespan = max(makespan, v.end)
+                    print(f"  Op {o}: machine {m}, [{v.start}-{v.end}]")
                     break
     print()
     print(f"Makespan: {makespan}")

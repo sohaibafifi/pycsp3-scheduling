@@ -171,7 +171,7 @@ maximize(Sum(presence_time(t) for t in optional_tasks))
 ```python
 if solve() in (SAT, OPTIMUM):
     result = interval_value(task)
-    print(result["start"], result["end"], result["length"])
+    print(result.start, result.end, result.length)
 
     opt_result = interval_value(optional)
     if opt_result is None:

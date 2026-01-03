@@ -26,6 +26,6 @@ minimize(Maximum(end_time(t) for t in tasks))
 if solve() in [SAT, OPTIMUM]:
     for t in tasks:
         v = interval_value(t)
-        print(f"{t.name}: start={v['start']}, end={v['end']}")
+        print(f"{t.name}: start={v.start}, end={v.end}")
 else:
     print("No solution found")

@@ -33,6 +33,15 @@ Helper functions for bridging pycsp3-scheduling with pycsp3.
 .. autofunction:: pycsp3_scheduling.interop.interval_value
 ```
 
+## Classes
+
+### IntervalValue
+
+```{eval-rst}
+.. autoclass:: pycsp3_scheduling.interop.IntervalValue
+   :members:
+```
+
 ## Function Reference
 
 | Function | Returns | Description |
@@ -40,7 +49,7 @@ Helper functions for bridging pycsp3-scheduling with pycsp3.
 | `start_time(interval)` | pycsp3 Variable | Start time variable for pycsp3 constraints |
 | `end_time(interval)` | pycsp3 Expression | End time expression (start + length) |
 | `presence_time(interval)` | pycsp3 Variable | Presence variable (0/1) for optional intervals |
-| `interval_value(interval)` | dict or None | Solution values after solving |
+| `interval_value(interval)` | IntervalValue or None | Solution values after solving |
 
 ## Usage Examples
 
@@ -75,14 +84,14 @@ optional_task = IntervalVar(size=10, optional=True, name="optional")
 if solve() in (SAT, OPTIMUM):
     # Regular task
     result = interval_value(task)
-    print(f"Task: start={result['start']}, end={result['end']}, length={result['length']}")
+    print(f"Task: start={result.start}, end={result.end}, length={result.length}")
     
     # Optional task (may be absent)
     result = interval_value(optional_task)
     if result is None:
         print("Optional task was not scheduled (absent)")
     else:
-        print(f"Optional task: start={result['start']}, end={result['end']}")
+        print(f"Optional task: start={result.start}, end={result.end}")
 ```
 
 ### Working with Presence Variables
@@ -104,16 +113,19 @@ satisfy(presence_time(task_a) == presence_time(task_b))
 
 ### Return Value Format
 
-The `interval_value()` function returns a dictionary with the following keys:
+The `interval_value()` function returns an `IntervalValue` with the following fields:
 
 ```python
 {
     'start': int,     # Start time of the interval
-    'end': int,       # End time of the interval  
+    'end': int,       # End time of the interval
     'length': int,    # Duration/length of the interval
     'present': bool,  # True if interval is present (always True for non-optional)
 }
 ```
+
+`IntervalValue` supports attribute access (`result.start`) and dict-like access
+(`result['start']`) for compatibility.
 
 For optional intervals that are absent, `interval_value()` returns `None`.
 

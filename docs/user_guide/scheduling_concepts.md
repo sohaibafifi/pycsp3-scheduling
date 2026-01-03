@@ -290,7 +290,7 @@ end_expr = end_time(task)     # pycsp3 expression
 
 # After solving, extract results
 result = interval_value(task)
-print(f"start={result['start']}, end={result['end']}")
+print(f"start={result.start}, end={result.end}")
 ```
 
 ## Optional Intervals Semantics

@@ -139,10 +139,10 @@ minimize(
 if __name__ == "__main__":
     if solve() in (SAT, OPTIMUM):
         v_last = interval_value(task_intervals[-1])
-        print(f"Period: {v_last['start']}")
+        print(f"Period: {v_last.start}")
         print(f"Makespan: {value(z)}")
         print("\nSchedule:")
         for i in T:
             v = interval_value(task_intervals[i])
             iter_val = value(k[i])
-            print(f"  Task {i:2d}: start={v['start']:3d} iter={iter_val}")
+            print(f"  Task {i:2d}: start={v.start:3d} iter={iter_val}")

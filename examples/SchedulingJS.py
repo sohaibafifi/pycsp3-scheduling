@@ -34,7 +34,7 @@ if result in [SAT, OPTIMUM]:
     for j in range(n_jobs):
         for o in range(n_machines):
             v = interval_value(ops[j][o])
-            print(f"{ops[j][o].name}: start={v['start']}, end={v['end']}")
+            print(f"{ops[j][o].name}: start={v.start}, end={v.end}")
     for m in range(n_machines):
         print(f"Sequence on machine {m}: {sequences[m]}")
 else: 

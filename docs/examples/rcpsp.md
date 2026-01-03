@@ -89,9 +89,9 @@ if solve() in (SAT, OPTIMUM):
     for i, task in enumerate(tasks):
         result = interval_value(task)
         demand_str = ", ".join(f"R{r}:{demands[i][r]}" for r in range(n_resources))
-        print(f"  {task.name}: [{result['start']}, {result['end']}] ({demand_str})")
+        print(f"  {task.name}: [{result.start}, {result.end}] ({demand_str})")
     
-    makespan = max(interval_value(t)['end'] for t in tasks)
+    makespan = max(interval_value(t).end for t in tasks)
     print(f"\nMakespan: {makespan}")
 else:
     print("No solution found")
@@ -124,14 +124,14 @@ def print_resource_profile(tasks, demands, capacities, horizon):
                 demands[i][r]
                 for i, task in enumerate(tasks)
                 if (result := interval_value(task)) and
-                   result['start'] <= t < result['end']
+                   result.start <= t < result.end
             )
             bar = '#' * usage + '.' * (capacities[r] - usage)
             print(f"  t={t:2}: [{bar}] {usage}/{capacities[r]}")
 
 # After solving:
 if solve() in (SAT, OPTIMUM):
-    makespan = max(interval_value(t)['end'] for t in tasks)
+    makespan = max(interval_value(t).end for t in tasks)
     print_resource_profile(tasks, demands, capacities, makespan)
 ```
 

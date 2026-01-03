@@ -104,4 +104,4 @@ if __name__ == "__main__":
             for j in range(m):
                 v = interval_value(ops[i][j])
                 machine = resources[i][j]
-                print(f"  Op {j} on M{machine}: [{v['start']}, {v['end']})")
+                print(f"  Op {j} on M{machine}: [{v.start}, {v.end})")

@@ -53,7 +53,7 @@ minimize(Maximum(end_time(task1), end_time(task2), end_time(task3)))
 if solve() in (SAT, OPTIMUM):
     for task in [task1, task2, task3]:
         result = interval_value(task)
-        print(f"{task.name}: start={result['start']}, end={result['end']}")
+        print(f"{task.name}: start={result.start}, end={result.end}")
 else:
     print("No solution found")
 ```
@@ -79,7 +79,7 @@ minimize(Maximum(end_time(task1), end_time(task2), end_time(task3)))
 if solve() in (SAT, OPTIMUM):
     for task in [task1, task2, task3]:
         result = interval_value(task)
-        print(f"{task.name}: start={result['start']}, end={result['end']}")
+        print(f"{task.name}: start={result.start}, end={result.end}")
 ```
 
 Expected output:
@@ -122,7 +122,7 @@ result = interval_value(optional_task)
 if result is None:
     print("Task was not scheduled (absent)")
 else:
-    print(f"Task scheduled at: start={result['start']}")
+    print(f"Task scheduled at: start={result.start}")
 ```
 
 ## Next Steps

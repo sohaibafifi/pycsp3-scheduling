@@ -92,9 +92,9 @@ if solve() in (SAT, OPTIMUM):
         for o in range(n_machines):
             result = interval_value(ops[j][o])
             m = machines[j][o]
-            print(f"  Op {o} on M{m}: [{result['start']}, {result['end']}]")
+            print(f"  Op {o} on M{m}: [{result.start}, {result.end}]")
     
-    makespan = max(interval_value(ops[j][-1])['end'] for j in range(n_jobs))
+    makespan = max(interval_value(ops[j][-1]).end for j in range(n_jobs))
     print(f"\nMakespan: {makespan}")
 else:
     print("No solution found")

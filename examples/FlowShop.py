@@ -52,7 +52,7 @@ if solve() in [SAT, OPTIMUM]:
         print(f"Job {j}: ", end="")
         for m in range(n_machines):
             v = interval_value(ops[j][m])
-            print(f"M{m}[{v['start']}-{v['end']}] ", end="")
+            print(f"M{m}[{v.start}-{v.end}] ", end="")
         print()
     
     print()
@@ -62,12 +62,12 @@ if solve() in [SAT, OPTIMUM]:
         print(f"Machine {m}: ", end="")
         # Get job order on this machine
         machine_schedule = [(j, interval_value(ops[j][m])) for j in range(n_jobs)]
-        machine_schedule.sort(key=lambda x: x[1]['start'])
+        machine_schedule.sort(key=lambda x: x[1].start)
         for j, v in machine_schedule:
-            print(f"J{j}[{v['start']}-{v['end']}] ", end="")
+            print(f"J{j}[{v.start}-{v.end}] ", end="")
         print()
     
     print()
-    print(f"Makespan: {max(interval_value(ops[j][-1])['end'] for j in range(n_jobs))}")
+    print(f"Makespan: {max(interval_value(ops[j][-1]).end for j in range(n_jobs))}")
 else:
     print("No solution found")

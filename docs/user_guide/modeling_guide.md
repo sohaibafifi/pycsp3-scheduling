@@ -45,7 +45,7 @@ minimize(Maximum(end_time(t) for t in tasks))
 if solve() in (SAT, OPTIMUM):
     for task in tasks:
         result = interval_value(task)
-        print(f"{task.name}: [{result['start']}, {result['end']}]")
+        print(f"{task.name}: [{result.start}, {result.end}]")
 ```
 
 ## Naming Conventions
@@ -314,8 +314,8 @@ if result == UNSAT:
 if solve() in (SAT, OPTIMUM):
     # Check precedences
     for p, s in precedences:
-        pred_end = interval_value(tasks[p])['end']
-        succ_start = interval_value(tasks[s])['start']
+        pred_end = interval_value(tasks[p]).end
+        succ_start = interval_value(tasks[s]).start
         assert pred_end <= succ_start, f"Precedence violated: {p} -> {s}"
     
     # Check resource usage at each time point
@@ -353,7 +353,7 @@ result = interval_value(optional_task)
 if result is None:
     print("Task is absent")
 else:
-    print(f"Task at {result['start']}")
+    print(f"Task at {result.start}")
 ```
 
 ## Summary Checklist

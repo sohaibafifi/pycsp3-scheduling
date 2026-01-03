@@ -160,4 +160,4 @@ if __name__ == "__main__":
         for i in range(nTasks):
             v = interval_value(task_intervals[i])
             assigned = [j for j in range(nWorkers) if value(w[j][i]) == 1]
-            print(f"  Task {i:2d}: [{v['start']:3d}, {v['end']:3d}) workers={assigned}")
+            print(f"  Task {i:2d}: [{v.start:3d}, {v.end:3d}) workers={assigned}")

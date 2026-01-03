@@ -55,7 +55,13 @@ from pycsp3_scheduling.expressions import (
 )
 
 # Interop
-from pycsp3_scheduling.interop import end_time, interval_value, presence_time, start_time
+from pycsp3_scheduling.interop import (
+    IntervalValue,
+    end_time,
+    interval_value,
+    presence_time,
+    start_time,
+)
 
 # Constraints
 from pycsp3_scheduling.constraints import (
@@ -143,6 +149,7 @@ __all__ = [
     "end_time",
     "presence_time",
     "interval_value",
+    "IntervalValue",
     # Constraints - Exact timing
     "start_at_start",
     "start_at_end",

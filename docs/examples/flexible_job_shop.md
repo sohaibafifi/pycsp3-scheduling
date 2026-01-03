@@ -121,9 +121,9 @@ if solve() in (SAT, OPTIMUM):
                     break
             
             print(f"  Op {o}: Machine {selected_machine}, "
-                  f"[{result['start']}, {result['end']}]")
+                  f"[{result.start}, {result.end}]")
     
-    makespan = max(interval_value(ops[j][-1])['end'] for j in range(n_jobs))
+    makespan = max(interval_value(ops[j][-1]).end for j in range(n_jobs))
     print(f"\nMakespan: {makespan}")
     
     # Print machine schedules
@@ -136,7 +136,7 @@ if solve() in (SAT, OPTIMUM):
                     if mach == m:
                         result = interval_value(alt)
                         if result is not None:
-                            scheduled.append((result['start'], j, o, result['end']))
+                            scheduled.append((result.start, j, o, result.end))
         
         scheduled.sort()
         print(f"  Machine {m}: ", end="")

@@ -92,7 +92,7 @@ if solve() in [SAT, OPTIMUM]:
         for i, e in enumerate(eligible):
             v = interval_value(alts[i])
             if v is not None:  # This employee was assigned
-                print(f"{task_name}: {employees[e]} [{v['start']}-{v['end']}]")
+                print(f"{task_name}: {employees[e]} [{v.start}-{v.end}]")
                 break
     
     print()
@@ -107,7 +107,7 @@ if solve() in [SAT, OPTIMUM]:
                 idx = eligible.index(e)
                 v = interval_value(alts[idx])
                 if v is not None:
-                    schedule.append((v['start'], tasks_data[t][0], v['end']))
+                    schedule.append((v.start, tasks_data[t][0], v.end))
         schedule.sort()
         for s, name, end in schedule:
             print(f"{name}[{s}-{end}] ", end="")
@@ -117,7 +117,7 @@ if solve() in [SAT, OPTIMUM]:
     
     print()
     # Calculate makespan
-    makespan = max(interval_value(t)['end'] for t in tasks)
+    makespan = max(interval_value(t).end for t in tasks)
     print(f"Makespan: {makespan}")
 else:
     print("No solution found")

@@ -82,7 +82,7 @@ minimize(start_time(task_intervals[-1]))
 if __name__ == "__main__":
     if solve() in (SAT, OPTIMUM):
         v = interval_value(task_intervals[-1])
-        print(f"Makespan: {v['start']}")
+        print(f"Makespan: {v.start}")
         print("\nSchedule:")
         for i in range(nJobs):
             v = interval_value(task_intervals[i])
@@ -91,4 +91,4 @@ if __name__ == "__main__":
                 for k in range(nResources)
                 if quantities[i][k] > 0
             )
-            print(f"  Job {i:2d}: [{v['start']:3d}, {v['end']:3d}) dur={durations[i]:2d} {res_usage}")
+            print(f"  Job {i:2d}: [{v.start:3d}, {v.end:3d}) dur={durations[i]:2d} {res_usage}")

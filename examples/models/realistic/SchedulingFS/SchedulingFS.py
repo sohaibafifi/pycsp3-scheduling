@@ -94,4 +94,4 @@ if __name__ == "__main__":
             print(f"Job {i}:")
             for j in range(m):
                 v = interval_value(ops[i][j])
-                print(f"  Machine {j}: [{v['start']}, {v['end']})")
+                print(f"  Machine {j}: [{v.start}, {v.end})")

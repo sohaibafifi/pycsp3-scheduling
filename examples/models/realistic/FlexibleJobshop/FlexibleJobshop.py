@@ -122,8 +122,8 @@ if __name__ == "__main__":
                 selected_opt = None
                 for o in options[t]:
                     ov = interval_value(opt_intervals[o])
-                    if ov is not None and ov["present"]:
+                    if ov is not None and ov.present:
                         selected_opt = o
                         break
                 machine = option_machines[selected_opt] if selected_opt is not None else "?"
-                print(f"  Task {t} on M{machine}: [{v['start']}, {v['end']})")
+                print(f"  Task {t} on M{machine}: [{v.start}, {v.end})")
