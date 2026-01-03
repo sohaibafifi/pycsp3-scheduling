@@ -5,20 +5,22 @@ An interval variable represents a task/activity with:
 - start: start time (can be a range [min, max])
 - end: end time (can be a range [min, max])
 - size: duration/size (can be a range [min, max])
+- length: length (can differ from size with intensity)
+- intensity: stepwise function relating size to length
+- granularity: scale for the intensity function
 - optional: whether the interval can be absent
 - name: identifier for the variable
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Union
+from typing import Union
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-# Type aliases for bounds
+# Type aliases for bounds and stepwise functions
 Bound = Union[int, tuple[int, int]]
+Step = tuple[int, int]
 
 # Constants for default bounds
 INTERVAL_MIN = 0
@@ -40,6 +42,8 @@ class IntervalVar:
         end: End time bound as int or (min, max) tuple.
         size: Duration/size bound as int or (min, max) tuple.
         length: Length bound (can differ from size with intensity functions).
+        intensity: Stepwise function relating size to length.
+        granularity: Scale for the intensity function.
         optional: If True, the interval may be absent from the solution.
         _id: Internal unique identifier.
 
@@ -47,6 +51,8 @@ class IntervalVar:
         >>> task = IntervalVar(size=10, name="task1")
         >>> optional_task = IntervalVar(size=(5, 20), optional=True, name="opt")
         >>> bounded_task = IntervalVar(start=(0, 100), end=(10, 200), size=15)
+        >>> intensity = [(INTERVAL_MIN, 100), (10, 50)]
+        >>> variable_rate = IntervalVar(size=10, intensity=intensity, granularity=100)
     """
 
     name: str | None = None
@@ -54,6 +60,8 @@ class IntervalVar:
     end: Bound = field(default_factory=lambda: (INTERVAL_MIN, INTERVAL_MAX))
     size: Bound = field(default_factory=lambda: (0, INTERVAL_MAX))
     length: Bound | None = None
+    intensity: list[Step] | None = None
+    granularity: int = 1
     optional: bool = False
     _id: int = field(default=-1, repr=False, compare=False)
 
@@ -71,6 +79,9 @@ class IntervalVar:
         else:
             # Length defaults to size if not specified
             self.length = self.size
+        if self.intensity is not None:
+            self.intensity = self._normalize_intensity(self.intensity)
+        self._validate_granularity()
 
         # Assign unique ID if not set
         if self._id == -1:
@@ -124,6 +135,41 @@ class IntervalVar:
                 f"Infeasible bounds: end_max={end_max} < start_min + size_min="
                 f"{start_min + size_min}"
             )
+
+    @staticmethod
+    def _normalize_intensity(intensity: Sequence[Step]) -> list[Step] | None:
+        """Normalize stepwise intensity to minimal consecutive steps."""
+        if not isinstance(intensity, Sequence) or isinstance(intensity, (str, bytes)):
+            raise TypeError("Intensity must be a sequence of (x, value) pairs")
+        steps: list[Step] = []
+        last_x: int | None = None
+        for step in intensity:
+            if not isinstance(step, (tuple, list)) or len(step) != 2:
+                raise ValueError("Intensity step must be a pair (x, value)")
+            x, val = step
+            if not isinstance(x, int) or not isinstance(val, int):
+                raise TypeError("Intensity step coordinates must be integers")
+            x = int(x)
+            val = int(val)
+            if val < 0:
+                raise ValueError("Intensity values must be non-negative")
+            if last_x is not None and x <= last_x:
+                raise ValueError("Intensity steps must be strictly increasing in x")
+            if steps and steps[-1][1] == val:
+                last_x = x
+                continue
+            steps.append((x, val))
+            last_x = x
+        if steps and steps[0][1] == 0:
+            steps.pop(0)
+        return steps if steps else None
+
+    def _validate_granularity(self) -> None:
+        """Validate intensity granularity."""
+        if not isinstance(self.granularity, int):
+            raise TypeError("granularity must be an int")
+        if self.granularity <= 0:
+            raise ValueError("granularity must be positive")
 
     @property
     def start_min(self) -> int:
@@ -213,6 +259,10 @@ class IntervalVar:
             parts.append(f"start={self.start}")
         if not self.is_fixed_end or self.end_max != INTERVAL_MAX:
             parts.append(f"end={self.end}")
+        if self.intensity is not None:
+            parts.append(f"intensity={self.intensity}")
+        if self.granularity != 1:
+            parts.append(f"granularity={self.granularity}")
         if self.optional:
             parts.append("optional=True")
         return ", ".join(parts) + ")"
@@ -225,6 +275,8 @@ def IntervalVarArray(
     end: Bound | None = None,
     size_range: Bound | None = None,
     length: Bound | None = None,
+    intensity: Sequence[Step] | None = None,
+    granularity: int = 1,
     optional: bool = False,
     name: str | None = None,
 ) -> list[IntervalVar]:
@@ -238,6 +290,8 @@ def IntervalVarArray(
         size_range: Size/duration bound for all intervals (named size_range
                     to avoid conflict with the size parameter).
         length: Length bound for all intervals.
+        intensity: Stepwise intensity function for all intervals.
+        granularity: Scale for the intensity function.
         optional: Whether all intervals are optional.
         name: Base name for intervals (will be suffixed with index).
 
@@ -273,6 +327,10 @@ def IntervalVarArray(
                     kwargs["size"] = size_range
                 if length is not None:
                     kwargs["length"] = length
+                if intensity is not None:
+                    kwargs["intensity"] = intensity
+                if granularity != 1:
+                    kwargs["granularity"] = granularity
                 result.append(IntervalVar(**kwargs))
             return result
         else:
@@ -292,6 +350,8 @@ def IntervalVarDict(
     end: Bound | None = None,
     size_range: Bound | None = None,
     length: Bound | None = None,
+    intensity: Sequence[Step] | None = None,
+    granularity: int = 1,
     optional: bool = False,
     name: str | None = None,
 ) -> dict:
@@ -304,6 +364,8 @@ def IntervalVarDict(
         end: End bound for all intervals.
         size_range: Size/duration bound for all intervals.
         length: Length bound for all intervals.
+        intensity: Stepwise intensity function for all intervals.
+        granularity: Scale for the intensity function.
         optional: Whether all intervals are optional.
         name: Base name for intervals.
 
@@ -327,6 +389,10 @@ def IntervalVarDict(
             kwargs["size"] = size_range
         if length is not None:
             kwargs["length"] = length
+        if intensity is not None:
+            kwargs["intensity"] = intensity
+        if granularity != 1:
+            kwargs["granularity"] = granularity
         result[key] = IntervalVar(**kwargs)
     return result
 

@@ -34,6 +34,9 @@ optional = IntervalVar(size=10, optional=True, name="optional")
 | `start` | Start time bounds as `(min, max)` tuple |
 | `end` | End time bounds as `(min, max)` tuple |
 | `size` | Duration bounds as `(min, max)` tuple |
+| `length` | Length bounds as `(min, max)` tuple |
+| `intensity` | Stepwise intensity function as `(x, value)` pairs |
+| `granularity` | Scale for the intensity function |
 | `optional` | Whether the task can be absent |
 | `name` | Identifier for the task |
 
@@ -46,6 +49,23 @@ print(task.start_min, task.start_max)  # 0, 100
 print(task.size_min, task.size_max)    # 5, 15
 print(task.is_fixed_size)              # False
 print(task.is_optional)                # False
+```
+
+### Intensity Functions
+
+Intensity functions relate size to length for intervals. A stepwise function is
+a special case of a piecewise linear function where all slopes are 0 and the
+domain and image are integer. Steps are expressed as a list of `(x, value)` pairs
+specifying that the function value is `value` after `x`, up to the next step.
+The default value is 0 up to the first step. To change this default value, set
+the first step to `(INTERVAL_MIN, value)`. Consecutive steps with the same value
+are merged so the function is represented with the minimal number of steps.
+
+```python
+from pycsp3_scheduling import IntervalVar, INTERVAL_MIN
+
+intensity = [(INTERVAL_MIN, 100), (5, 80), (10, 60)]
+task = IntervalVar(size=10, intensity=intensity, granularity=100, name="task")
 ```
 
 ## Sequence Variables

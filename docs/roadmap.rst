@@ -16,6 +16,7 @@ Completed ✅
 - **Sequence Constraints**: ``SeqNoOverlap``, ``first``, ``last``, ``before``, ``previous``, sequence accessors
 - **Cumulative Functions**: ``pulse``, ``step_at``, ``step_at_start``, ``step_at_end``, ``Cumulative``, ``cumul_range``, ``always_in``
 - **State Functions**: ``StateFunction``, ``TransitionMatrix``, ``always_equal``, ``always_constant``, ``always_no_state``
+- **Interval Intensity**: Stepwise intensity function and granularity support for ``IntervalVar``
 
 **Documentation & Examples**
 
@@ -39,7 +40,6 @@ Remaining Work ⏳
 
 **Other**
 
-- Intensity function support for ``IntervalVar``
 - ``isomorphism`` constraint
 - Evaluation functions (``start_eval``, ``end_eval``, etc.)
 

@@ -3,6 +3,7 @@
 import pytest
 
 from pycsp3_scheduling.variables import (
+    INTERVAL_MIN,
     IntervalVar,
     IntervalVarArray,
     IntervalVarDict,
@@ -110,6 +111,39 @@ class TestIntervalVar:
         assert task.size_max == 10
         assert task.length_min == 8
         assert task.length_max == 12
+
+    def test_intensity_normalization(self):
+        """Test intensity step normalization and merging."""
+        intensity = [(0, 0), (5, 0), (7, 3), (10, 3), (12, 1)]
+        task = IntervalVar(size=10, intensity=intensity, name="task")
+        assert task.intensity == [(7, 3), (12, 1)]
+
+        intensity = [(INTERVAL_MIN, 5), (10, 5), (20, 1)]
+        task = IntervalVar(size=10, intensity=intensity, name="task2")
+        assert task.intensity == [(0, 5), (20, 1)]
+
+    def test_empty_intensity_becomes_none(self):
+        """Test that all-zero intensity normalizes to None."""
+        intensity = [(0, 0), (5, 0), (10, 0)]
+        task = IntervalVar(size=10, intensity=intensity, name="task")
+        assert task.intensity is None
+
+    def test_negative_intensity_raises(self):
+        """Test that negative intensity values raise an error."""
+        with pytest.raises(ValueError, match="Intensity values must be non-negative"):
+            IntervalVar(size=10, intensity=[(0, -5)], name="task")
+
+    def test_invalid_intensity_steps(self):
+        """Test intensity validation for step ordering."""
+        with pytest.raises(ValueError, match="Intensity steps must be strictly increasing"):
+            IntervalVar(size=10, intensity=[(5, 1), (3, 2)], name="task")
+
+    def test_granularity_validation(self):
+        """Test granularity validation."""
+        with pytest.raises(ValueError, match="granularity must be positive"):
+            IntervalVar(size=10, granularity=0, name="task")
+        with pytest.raises(TypeError, match="granularity must be an int"):
+            IntervalVar(size=10, granularity=1.5, name="task")
 
     def test_invalid_bounds_min_greater_than_max(self):
         """Test error on invalid bounds."""

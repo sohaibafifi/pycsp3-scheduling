@@ -4,7 +4,8 @@ Scheduling extension for [pycsp3](https://pycsp.org) with interval variables, se
 
 ## Features
 
-- **Interval Variables**: Represent tasks/activities with start, end, size, and optional presence
+- **Interval Variables**: Represent tasks/activities with start, end, size, length, and optional presence
+- **Intensity Functions**: Stepwise intensity metadata with granularity scaling for size/length
 - **Sequence Variables**: Ordered sequences of intervals on disjunctive resources
 - **Precedence Constraints**: `end_before_start`, `start_at_start`, etc.
 - **Grouping Constraints**: `span`, `alternative`, `synchronize`
@@ -117,7 +118,7 @@ minimize(Maximum(end_time(t) for t in tasks))
 
 | Function | Description |
 |----------|-------------|
-| `IntervalVar(size, start, end, optional, name)` | Create an interval variable |
+| `IntervalVar(size, start, end, length, intensity, granularity, optional, name)` | Create an interval variable |
 | `IntervalVarArray(size, ...)` | Create array of interval variables |
 | `SequenceVar(intervals, types, name)` | Create a sequence variable |
 

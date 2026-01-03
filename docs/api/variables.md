@@ -64,7 +64,7 @@ This module provides the core variable types for scheduling models.
 ### Creating Interval Variables
 
 ```python
-from pycsp3_scheduling import IntervalVar, IntervalVarArray, IntervalVarDict
+from pycsp3_scheduling import IntervalVar, IntervalVarArray, IntervalVarDict, INTERVAL_MIN
 
 # Single interval with fixed duration
 task = IntervalVar(size=10, name="task1")
@@ -74,6 +74,15 @@ flexible = IntervalVar(size=(5, 20), name="flexible_task")
 
 # Optional interval (can be absent)
 optional = IntervalVar(size=10, optional=True, name="optional_task")
+
+# Interval with stepwise intensity
+intensity = [(INTERVAL_MIN, 100), (10, 50)]
+rate_scaled = IntervalVar(
+    size=10,
+    intensity=intensity,
+    granularity=100,
+    name="rate_scaled"
+)
 
 # Bounded start and end times
 bounded = IntervalVar(

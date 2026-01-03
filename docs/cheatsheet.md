@@ -18,6 +18,10 @@ task = IntervalVar(size=10, name="task1")                       # fixed size
 flex = IntervalVar(size=(5, 15), name="task2")                  # variable size
 optional = IntervalVar(size=8, optional=True, name="task3")     # optional
 bounded = IntervalVar(start=(0, 50), end=(10, 120), size=10, name="task4")
+
+# with intensity function (size differs from length based on efficiency)
+intensity = [(INTERVAL_MIN, 100), (10, 50)]  # 100% until t=10, then 50%
+scaled = IntervalVar(size=10, intensity=intensity, granularity=100, name="task5")
 ```
 
 ### Arrays and Dictionaries
