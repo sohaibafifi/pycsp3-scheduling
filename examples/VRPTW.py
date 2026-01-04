@@ -222,7 +222,7 @@ for v in range(n_vehicles):
 minimize(Sum(distance_terms))
 
 # Solve
-result = solve()
+result = solve(sols=2)
 
 if result in (SAT, OPTIMUM):
     print("\n" + "=" * 60)
@@ -267,3 +267,34 @@ if result in (SAT, OPTIMUM):
     print(f"Objective value (inter-customer + return): {bound()}")
 else:
     print("No solution found")
+
+if result in (SAT, OPTIMUM):
+    visu.reset()
+    makespan = max(interval_value(main_visits[c]).end for c in range(n_customers))
+    visu.timeline("VRPTW Schedule", origin=0, horizon=makespan + 10)
+
+    # One panel per vehicle
+    for v in range(n_vehicles):
+        visu.panel(f"Vehicle {v}")
+
+        # Only show customer visits, not depot
+        for c in range(n_customers):
+            val = interval_value(visits[v][c])
+            if val is not None:
+                customer_id = c + 1
+                visu.interval(
+                    val.start, val.end,
+                    f"C{customer_id}",
+                    color=customer_id
+                )
+
+    # Panel showing all visits (overview)
+    visu.panel("All Customers")
+    for c in range(n_customers):
+        val = interval_value(main_visits[c])
+        visu.interval(val.start, val.end, f"C{c + 1}", color=c + 1)
+
+    if visu.is_visu_enabled():
+        visu.show()
+    else:
+        print("Visualization disabled (matplotlib not available)")

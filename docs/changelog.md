@@ -5,6 +5,38 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-01-04
+
+### Added
+
+- **ElementMatrix** class for 2D array indexing with expressions
+  - Supports indexing with pycsp3 variables (like CP Optimizer's `IloNumArray2`)
+  - Built-in `last_value` and `absent_value` for boundary cases
+  - Properties: `last_type`, `absent_type` for column indices
+  - `get_value()` method for debugging/constant access
+
+- **type_of_next / type_of_prev** now return pycsp3 variables
+  - Can be used directly in `ElementMatrix` indexing
+  - Enables CP Optimizer-style distance objectives:
+    `M[type_i, type_of_next(route, interval, last_value, absent_value)]`
+
+- **element() and element2d()** helper functions
+  - Array indexing with variable indices
+
+### Fixed
+
+- XCSP3 variable ID naming (must start with letter, not underscore)
+  - Fixed prefixes: `tonext`, `toprev`, `tm`, `elem`, `elem2d`
+
+### Changed
+
+- VRPTW example updated to use `ElementMatrix` + `type_of_next` for distance objective
+- VRPTW notebooks updated with working distance minimization
+
+## [0.1.5] - 2026-01-04
+  - Added ElementMatrix expression for 2D array indexing
+  - Add vrptw example 
+
 ## [0.1.4] - 2026-01-03
   - Added Visualization module and statistics functions
 

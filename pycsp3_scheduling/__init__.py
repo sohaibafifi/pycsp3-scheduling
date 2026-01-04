@@ -17,7 +17,7 @@ This package extends pycsp3 with comprehensive scheduling support including:
 
 from __future__ import annotations
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __author__ = "Sohaib AFIFI"
 
 # Variables
