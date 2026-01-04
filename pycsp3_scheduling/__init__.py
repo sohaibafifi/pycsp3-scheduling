@@ -33,7 +33,11 @@ from pycsp3_scheduling.variables import (
 
 # Expressions
 from pycsp3_scheduling.expressions import (
+    ElementMatrix,
     IntervalExpr,
+    clear_sequence_expr_cache,
+    element,
+    element2d,
     end_of,
     end_of_next,
     end_of_prev,
@@ -151,6 +155,11 @@ __all__ = [
     "size_of_prev",
     "length_of_prev",
     "type_of_prev",
+    # Expressions - Element (array indexing)
+    "ElementMatrix",
+    "element",
+    "element2d",
+    "clear_sequence_expr_cache",
     # Interop
     "start_time",
     "end_time",

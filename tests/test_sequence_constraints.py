@@ -486,15 +486,16 @@ class TestSequenceAccessorNext:
         assert isinstance(expr, IntervalExpr)
 
     def test_type_of_next_basic(self):
-        """type_of_next returns IntervalExpr."""
-        from pycsp3_scheduling.expressions import IntervalExpr
-        
+        """type_of_next returns a pycsp3 variable that can be used for indexing."""
         tasks = [IntervalVar(size=5, name=f"t{i}") for i in range(3)]
         seq = SequenceVar(intervals=tasks, types=[0, 1, 2], name="machine")
         
-        expr = type_of_next(seq, tasks[0])
+        result = type_of_next(seq, tasks[0])
         
-        assert isinstance(expr, IntervalExpr)
+        # type_of_next now returns a pycsp3 variable for use in element constraints
+        # It should have a string representation (variable ID)
+        assert result is not None
+        assert str(result).startswith("tonext")
 
     def test_type_of_next_requires_sequence_var(self):
         """type_of_next requires SequenceVar."""
@@ -564,15 +565,16 @@ class TestSequenceAccessorPrev:
         assert isinstance(expr, IntervalExpr)
 
     def test_type_of_prev_basic(self):
-        """type_of_prev returns IntervalExpr."""
-        from pycsp3_scheduling.expressions import IntervalExpr
-        
+        """type_of_prev returns a pycsp3 variable that can be used for indexing."""
         tasks = [IntervalVar(size=5, name=f"t{i}") for i in range(3)]
         seq = SequenceVar(intervals=tasks, types=[0, 1, 2], name="machine")
         
-        expr = type_of_prev(seq, tasks[1])
+        result = type_of_prev(seq, tasks[1])
         
-        assert isinstance(expr, IntervalExpr)
+        # type_of_prev now returns a pycsp3 variable for use in element constraints
+        # It should have a string representation (variable ID)
+        assert result is not None
+        assert str(result).startswith("toprev")
 
     def test_type_of_prev_requires_sequence_var(self):
         """type_of_prev requires SequenceVar."""
