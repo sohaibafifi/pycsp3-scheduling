@@ -80,13 +80,10 @@ Examples
    :maxdepth: 1
    :caption: Examples
 
-
-   examples/job_shop_tutorial.ipynb
-   examples/rcpsp_tutorial.ipynb
-   examples/flexible_job_shop_tutorial.ipynb
-   examples/setup_times_tutorial.ipynb
-   examples/multi_resource_tutorial.ipynb
-   examples/spanning_sync_tutorial.ipynb
+   examples/job_shop.ipynb
+   examples/flexible_job_shop.ipynb
+   examples/rcpsp.ipynb
+   examples/vrptw.ipynb
 
 Additional Resources
 --------------------
