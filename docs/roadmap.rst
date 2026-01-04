@@ -21,7 +21,7 @@ Completed ✅
 **Documentation & Examples**
 
 - API documentation, user guides, Jupyter tutorials
-- Examples: Job Shop, Flexible Job Shop, RCPSP, Flow Shop, Open Shop, Employee Scheduling
+- Examples: Job Shop, Flexible Job Shop, RCPSP, Flow Shop, Open Shop, Employee Scheduling, VRPTW
 
 Remaining Work ⏳
 -----------------
@@ -34,9 +34,6 @@ Remaining Work ⏳
 - Integration tests and benchmarks
 - Python 3.10-3.12 compatibility validation
 
-**Examples**
-
-- Vehicle Routing with Time Windows example
 
 **Other**
 

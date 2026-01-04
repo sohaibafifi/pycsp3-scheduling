@@ -5,6 +5,11 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-01-05
+  - Fixed VRPTW example notebook with distance minimization objective
+  - Updated documentation for ElementMatrix and type_of_next/prev
+  - Complete SeqNoOverlap support with transition matrix
+
 ## [0.1.6] - 2026-01-04
 
 ### Added
