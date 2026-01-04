@@ -1,7 +1,8 @@
 """
 Vehicle Routing Problem with Time Windows (VRPTW)
 
-Objective: Minimize total travel distance using the type_of_next pattern.
+Objective: Minimize total travel distance using the type_of_next pattern,
+including depot departure via a fictive depot visit per vehicle.
 
 This example demonstrates the CP Optimizer-style distance objective:
 
@@ -11,7 +12,7 @@ This example demonstrates the CP Optimizer-style distance objective:
 
 Where:
 - M is the transition matrix with travel distances between customers
-- type_i is the type of interval i (maps to customer)
+- type_i is the type of interval i (0=depot, 1..n=customers)
 - type_of_next returns the type of the next interval in the sequence
 - last_value = distance back to depot (when interval is last in route)
 - absent_value = 0 (no cost if interval is not scheduled)
@@ -45,7 +46,7 @@ customers = [
     (10, 40, 5, 3),    # Customer 1
     (20, 50, 8, 5),    # Customer 2
     (15, 45, 6, 4),    # Customer 3
-    (30, 70, 4, 6),    # Customer 4
+    (15, 20, 4, 6),    # Customer 4
     (25, 50, 7, 3),    # Customer 5
     (40, 80, 5, 4),    # Customer 6
 ]
@@ -53,12 +54,12 @@ customers = [
 # Travel times matrix (symmetric)
 # travel[i][j] = time to go from i to j
 travel = [
-    [0, 10, 15, 12, 20, 18, 25],  # From depot
+    [0, 10, 15, 12, 20, 20, 25],  # From depot
     [10, 0, 8, 10, 15, 12, 20],   # From customer 1
     [15, 8, 0, 6, 10, 8, 15],     # From customer 2
     [12, 10, 6, 0, 12, 10, 18],   # From customer 3
     [20, 15, 10, 12, 0, 6, 10],   # From customer 4
-    [18, 12, 8, 10, 6, 0, 8],     # From customer 5
+    [20, 12, 8, 10, 6, 0, 8],     # From customer 5
     [25, 20, 15, 18, 10, 8, 0],   # From customer 6
 ]
 
@@ -79,10 +80,19 @@ for i, (e, l, s, d) in enumerate(customers):
 clear()
 clear_interval_registry()
 
+# Create a depot interval per vehicle (fictive visit fixed at time 0)
+depots = []
+
 # Create visit intervals for each (vehicle, customer) pair
 # visits[v][c] = interval for vehicle v visiting customer c
 visits = []
 for v in range(n_vehicles):
+    depot = IntervalVar(
+        start=0,
+        size=0,
+        name=f"V{v}_Depot"
+    )
+    depots.append(depot)
     vehicle_visits = []
     for c in range(1, n_customers + 1):  # Skip depot (index 0)
         earliest, latest, service, demand = customers[c]
@@ -95,6 +105,7 @@ for v in range(n_vehicles):
         vehicle_visits.append(visit)
     visits.append(vehicle_visits)
 
+print(f"Created {n_vehicles} depot intervals fixed at time 0")
 print(f"Created {n_vehicles * n_customers} optional visit intervals")
 print(f"  visits[vehicle][customer-1] for customer 1..{n_customers}")
 
@@ -121,13 +132,13 @@ for c in range(n_customers):
 print("Alternative constraints: each customer assigned to exactly one vehicle")
 
 # Create sequence variable for each vehicle route
-# The sequence determines the order of visits
+# The sequence determines the order of visits (depot + customers)
 routes = []
 for v in range(n_vehicles):
-    # Customer types for transition matrix (0-indexed: 0 to n_customers-1)
-    types = list(range(n_customers))  # Types 0..n_customers-1
+    # Types align with travel matrix indices: 0=depot, 1..n_customers=customers
+    types = [0] + [c + 1 for c in range(n_customers)]
     route = SequenceVar(
-        intervals=visits[v],
+        intervals=[depots[v]] + visits[v],
         types=types,
         name=f"route_{v}"
     )
@@ -135,16 +146,9 @@ for v in range(n_vehicles):
 
 print(f"Created {n_vehicles} route sequences")
 
-# Build transition matrix for travel times between customers
-# transition[i][j] = travel time from customer (i+1) to customer (j+1)
-# Types are 0-indexed (0 to n_customers-1), mapping to customers 1 to n_customers
-transition_matrix = []
-for i in range(n_customers):
-    row = []
-    for j in range(n_customers):
-        # i maps to customer i+1, j maps to customer j+1
-        row.append(travel[i+1][j+1])
-    transition_matrix.append(row)
+# Build transition matrix for travel times (includes depot as type 0)
+# transition[i][j] = travel time from type i to type j
+transition_matrix = [row[:] for row in travel]
 
 # No-overlap with travel times on each route
 for v in range(n_vehicles):
@@ -171,25 +175,19 @@ print(f"Capacity constraints: each route demand <= {vehicle_capacity}")
 # This is the CP Optimizer-style objective using ElementMatrix and type_of_next.
 #
 # Matrix structure:
-#   M[type_i, type_j] = distance from customer (type_i+1) to customer (type_j+1)
-#   M[type_i, last_type] = distance from customer (type_i+1) back to depot
+#   M[type_i, type_j] = distance from type_i to type_j (type 0 is depot)
+#   M[type_i, last_type] = distance from type_i back to depot
 #   M[type_i, absent_type] = 0 (no cost if interval is absent)
 #
 # For each vehicle route and each interval:
 #   cost += M[type_i, type_of_next(route, interval, last_value, absent_value)]
 
-# Build the transition cost matrix (customer-to-customer distances)
-# Types are 0-indexed (type i corresponds to customer i+1)
-cost_matrix = []
-for i in range(n_customers):
-    row = []
-    for j in range(n_customers):
-        # travel[i+1][j+1] = distance from customer (i+1) to customer (j+1)
-        row.append(travel[i+1][j+1])
-    cost_matrix.append(row)
+# Build the transition cost matrix (includes depot as type 0)
+cost_matrix = [row[:] for row in travel]
 
-# Distance back to depot for each customer type (when interval is last)
-depot_distances = [travel[i+1][0] for i in range(n_customers)]
+# Distance back to depot for each type (when interval is last)
+# Row 0 (depot) has 0 cost when no customer is visited
+depot_distances = [0] + [travel[i][0] for i in range(1, n_customers + 1)]
 
 # Create ElementMatrix with special values for boundary cases
 M = ElementMatrix(
@@ -200,13 +198,20 @@ M = ElementMatrix(
 
 print(f"\nDistance objective using type_of_next pattern:")
 print(f"  Matrix size: {M.n_rows}x{M.n_cols} (+ last_type={M.last_type}, absent_type={M.absent_type})")
-print(f"  Example: C1->C2 = {M.get_value(0, 1)}, C3->depot = {M.get_value(2, M.last_type)}")
+print(f"  Example: Depot->C1 = {M.get_value(0, 1)}, C2->depot = {M.get_value(2, M.last_type)}")
 
 # Build objective: sum of M[type_i, type_of_next(route, interval)]
 distance_terms = []
 for v in range(n_vehicles):
+    depot_next = type_of_next(
+        routes[v],
+        depots[v],
+        last_value=M.last_type,
+        absent_value=M.absent_type,
+    )
+    distance_terms.append(M[0, depot_next])
     for c in range(n_customers):
-        type_i = c  # Type of this interval (0-indexed customer)
+        type_i = c + 1  # Type of this interval (1-indexed customer)
         next_type = type_of_next(
             routes[v],
             visits[v][c],
@@ -216,13 +221,13 @@ for v in range(n_vehicles):
         # M[type_i, next_type] gives the transition cost
         distance_terms.append(M[type_i, next_type])
 
-# Note: This objective covers customer-to-customer + return-to-depot distances.
-# Depot departure costs are handled separately in the distance calculation below.
+# Note: This objective covers depot departure, customer-to-customer,
+# and return-to-depot distances.
 
 minimize(Sum(distance_terms))
 
 # Solve
-result = solve(sols=2)
+result = solve(sols=5)
 
 if result in (SAT, OPTIMUM):
     print("\n" + "=" * 60)
@@ -264,7 +269,7 @@ if result in (SAT, OPTIMUM):
             print(f"Vehicle {v}: unused")
 
     print(f"\nTotal travel distance: {total_distance}")
-    print(f"Objective value (inter-customer + return): {bound()}")
+    print(f"Objective value (departure + inter-customer + return): {bound()}")
 else:
     print("No solution found")
 

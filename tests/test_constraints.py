@@ -84,7 +84,7 @@ class TestSeqNoOverlap:
             SeqNoOverlap(seq, transition_matrix=[[0]])
 
     def test_is_direct_parameter(self):
-        """is_direct parameter is accepted (no special behavior yet)."""
+        """is_direct parameter is accepted for direct (Next) transitions."""
         tasks = [IntervalVar(size=3, name="t1"), IntervalVar(size=2, name="t2")]
         seq = SequenceVar(intervals=tasks, types=[0, 1], name="machine")
 

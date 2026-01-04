@@ -86,6 +86,7 @@ def SeqNoOverlap(
     sequence,
     transition_matrix: list[list[int]] | None = None,
     is_direct: bool = False,
+    zero_ignored: bool = True,
 ):
     """
     Enforce non-overlap on a sequence of intervals with optional transition times.
@@ -99,10 +100,13 @@ def SeqNoOverlap(
         transition_matrix: Optional square matrix of transition times.
             If sequence has types, matrix[i][j] gives the minimum time
             between an interval of type i and an interval of type j.
-        is_direct: If True, transition times apply only between directly
-            consecutive (adjacent) intervals in the sequence. If False,
-            transition times apply between any pair where one precedes
-            the other.
+    is_direct: If True, transition times apply only between immediately
+        consecutive intervals in schedule order (IBM "Next" semantics).
+        If False, transition times apply between any pair where one
+        precedes the other (IBM "After" semantics).
+
+    zero_ignored: If True, intervals with zero length are ignored
+            in the non-overlap constraint.
 
     Returns:
         A pycsp3 constraint (ECtr) or list of constraints.
@@ -158,74 +162,154 @@ def SeqNoOverlap(
 
     if transition_matrix is None:
         # Simple no-overlap without transition times
-        return NoOverlap(origins=origins, lengths=lengths)
+        return NoOverlap(origins=origins, lengths=lengths, zero_ignored=zero_ignored)
 
-    # With transition matrix: need to add setup times to lengths
-    # For each pair (i, j) where i precedes j in sequence order:
-    # end(i) + transition[type_i][type_j] <= start(j)
+    # With transition matrix: add setup times between intervals.
+    # - is_direct=False: apply transition times between any ordered pair (After)
+    # - is_direct=True: apply transition times only between immediate successors (Next)
     #
-    # For now, we model this as: end_before_start with delay
     # The pycsp3 NoOverlap doesn't directly support type-based transitions,
-    # so we decompose into pairwise constraints
+    # so we decompose into primitive constraints.
     Node, TypeNode = _get_node_builders()
 
     constraints = []
     types = seq_var.types
 
     # Add basic non-overlap first
-    constraints.append(NoOverlap(origins=origins, lengths=lengths))
+    constraints.append(NoOverlap(origins=origins, lengths=lengths, zero_ignored=zero_ignored))
 
-    # Add transition constraints for each pair (only i < j to avoid duplicates)
-    for i in range(len(intervals)):
-        for j in range(i + 1, len(intervals)):
+    if is_direct:
+        starts = origins
+        ends = [_build_end_expr(interval, Node, TypeNode) for interval in intervals]
+        presences = [
+            presence_var(interval) if interval.optional else None
+            for interval in intervals
+        ]
+
+        for i in range(len(intervals)):
             interval_i = intervals[i]
-            interval_j = intervals[j]
             type_i = types[i]
-            type_j = types[j]
+            end_i = ends[i]
 
-            # Get transition times in both directions
-            trans_i_to_j = transition_matrix[type_i][type_j]
-            trans_j_to_i = transition_matrix[type_j][type_i]
+            for j in range(len(intervals)):
+                if i == j:
+                    continue
 
-            # Skip if no transition time needed in either direction
-            if trans_i_to_j <= 0 and trans_j_to_i <= 0:
-                continue
+                interval_j = intervals[j]
+                type_j = types[j]
+                trans_i_to_j = transition_matrix[type_i][type_j]
+                if trans_i_to_j <= 0:
+                    continue
 
-            end_i = _build_end_expr(interval_i, Node, TypeNode)
-            start_j = start_var(interval_j)
-            end_j = _build_end_expr(interval_j, Node, TypeNode)
-            start_i = start_var(interval_i)
+                start_j = starts[j]
 
-            # Build constraint: either i before j (with trans) or j before i (with trans)
-            # (end_i + trans_i_to_j <= start_j) OR (end_j + trans_j_to_i <= start_i)
-            if trans_i_to_j > 0:
+                # Condition: j is immediate successor of i (in schedule order)
+                cond_parts = [Node.build(TypeNode.LE, end_i, start_j)]
+                if interval_i.optional:
+                    cond_parts.append(Node.build(TypeNode.EQ, presences[i], 1))
+                if interval_j.optional:
+                    cond_parts.append(Node.build(TypeNode.EQ, presences[j], 1))
+
+                no_between_parts = []
+                for k in range(len(intervals)):
+                    if k in (i, j):
+                        continue
+                    interval_k = intervals[k]
+                    end_k = ends[k]
+                    start_k = starts[k]
+                    if interval_k.optional:
+                        no_between_parts.append(
+                            Node.build(
+                                TypeNode.OR,
+                                Node.build(TypeNode.EQ, presences[k], 0),
+                                Node.build(TypeNode.LT, end_k, end_i),
+                                Node.build(TypeNode.LT, start_j, start_k),
+                            )
+                        )
+                    else:
+                        no_between_parts.append(
+                            Node.build(
+                                TypeNode.OR,
+                                Node.build(TypeNode.LT, end_k, end_i),
+                                Node.build(TypeNode.LT, start_j, start_k),
+                            )
+                        )
+
+                if no_between_parts:
+                    cond_parts.append(
+                        no_between_parts[0]
+                        if len(no_between_parts) == 1
+                        else Node.build(TypeNode.AND, *no_between_parts)
+                    )
+
+                j_is_next = (
+                    cond_parts[0]
+                    if len(cond_parts) == 1
+                    else Node.build(TypeNode.AND, *cond_parts)
+                )
+
                 end_i_plus_trans = Node.build(TypeNode.ADD, end_i, trans_i_to_j)
-                i_before_j = Node.build(TypeNode.LE, end_i_plus_trans, start_j)
-            else:
-                i_before_j = Node.build(TypeNode.LE, end_i, start_j)
+                trans_ctr = Node.build(TypeNode.LE, end_i_plus_trans, start_j)
 
-            if trans_j_to_i > 0:
-                end_j_plus_trans = Node.build(TypeNode.ADD, end_j, trans_j_to_i)
-                j_before_i = Node.build(TypeNode.LE, end_j_plus_trans, start_i)
-            else:
-                j_before_i = Node.build(TypeNode.LE, end_j, start_i)
+                constraints.append(
+                    Node.build(
+                        TypeNode.OR,
+                        Node.build(TypeNode.NOT, j_is_next),
+                        trans_ctr,
+                    )
+                )
+    else:
+        # Add transition constraints for each pair (only i < j to avoid duplicates)
+        for i in range(len(intervals)):
+            for j in range(i + 1, len(intervals)):
+                interval_i = intervals[i]
+                interval_j = intervals[j]
+                type_i = types[i]
+                type_j = types[j]
 
-            # Build disjunction with optional interval handling
-            disjuncts = [i_before_j, j_before_i]
+                # Get transition times in both directions
+                trans_i_to_j = transition_matrix[type_i][type_j]
+                trans_j_to_i = transition_matrix[type_j][type_i]
 
-            # If either interval is optional, add absence as escape clause
-            if interval_i.optional:
-                pres_i = presence_var(interval_i)
-                i_absent = Node.build(TypeNode.EQ, pres_i, 0)
-                disjuncts.insert(0, i_absent)
+                # Skip if no transition time needed in either direction
+                if trans_i_to_j <= 0 and trans_j_to_i <= 0:
+                    continue
 
-            if interval_j.optional:
-                pres_j = presence_var(interval_j)
-                j_absent = Node.build(TypeNode.EQ, pres_j, 0)
-                disjuncts.insert(0, j_absent)
+                end_i = _build_end_expr(interval_i, Node, TypeNode)
+                start_j = start_var(interval_j)
+                end_j = _build_end_expr(interval_j, Node, TypeNode)
+                start_i = start_var(interval_i)
 
-            disjunction = Node.build(TypeNode.OR, *disjuncts)
-            constraints.append(disjunction)
+                # Build constraint: either i before j (with trans) or j before i (with trans)
+                # (end_i + trans_i_to_j <= start_j) OR (end_j + trans_j_to_i <= start_i)
+                if trans_i_to_j > 0:
+                    end_i_plus_trans = Node.build(TypeNode.ADD, end_i, trans_i_to_j)
+                    i_before_j = Node.build(TypeNode.LE, end_i_plus_trans, start_j)
+                else:
+                    i_before_j = Node.build(TypeNode.LE, end_i, start_j)
+
+                if trans_j_to_i > 0:
+                    end_j_plus_trans = Node.build(TypeNode.ADD, end_j, trans_j_to_i)
+                    j_before_i = Node.build(TypeNode.LE, end_j_plus_trans, start_i)
+                else:
+                    j_before_i = Node.build(TypeNode.LE, end_j, start_i)
+
+                # Build disjunction with optional interval handling
+                disjuncts = [i_before_j, j_before_i]
+
+                # If either interval is optional, add absence as escape clause
+                if interval_i.optional:
+                    pres_i = presence_var(interval_i)
+                    i_absent = Node.build(TypeNode.EQ, pres_i, 0)
+                    disjuncts.insert(0, i_absent)
+
+                if interval_j.optional:
+                    pres_j = presence_var(interval_j)
+                    j_absent = Node.build(TypeNode.EQ, pres_j, 0)
+                    disjuncts.insert(0, j_absent)
+
+                disjunction = Node.build(TypeNode.OR, *disjuncts)
+                constraints.append(disjunction)
 
     return constraints
 
