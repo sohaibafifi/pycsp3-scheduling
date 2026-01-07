@@ -211,6 +211,44 @@ class Panel:
 
 
 @dataclass
+class AnnotationData:
+    """
+    Data for annotations (vertical lines, horizontal lines, text).
+
+    Attributes:
+        kind: Type of annotation ('vline', 'hline', 'text').
+        x: X coordinate (time).
+        y: Y coordinate (for text and hline).
+        value: Value for hline or text content.
+        color: Color for the annotation.
+        label: Optional label (for legend).
+        style: Line style ('solid', 'dashed', 'dotted').
+    """
+
+    kind: str
+    x: int | float | None = None
+    y: int | float | None = None
+    value: str | int | float | None = None
+    color: str | None = None
+    label: str | None = None
+    style: str = "dashed"
+
+
+@dataclass
+class LegendItem:
+    """
+    Data for a legend entry.
+
+    Attributes:
+        label: Text label for the legend entry.
+        color: Color for the legend marker.
+    """
+
+    label: str
+    color: int | str
+
+
+@dataclass
 class Timeline:
     """
     The main visualization figure.
@@ -220,12 +258,16 @@ class Timeline:
         origin: Start of the time axis.
         horizon: End of the time axis (auto-computed if None).
         panels: List of panels to display.
+        legend_items: List of legend entries.
+        annotations: List of global annotations.
     """
 
     title: str | None = None
     origin: int | float = 0
     horizon: int | float | None = None
     panels: list[Panel] = field(default_factory=list)
+    legend_items: list[LegendItem] = field(default_factory=list)
+    annotations: list[AnnotationData] = field(default_factory=list)
 
 
 # =============================================================================
@@ -579,6 +621,45 @@ def show(block: bool = True) -> None:
     plt.show(block=block)
 
 
+def savefig(
+    filename: str,
+    dpi: int = 150,
+    bbox_inches: str = "tight",
+    transparent: bool = False,
+) -> None:
+    """
+    Save the current timeline to a file.
+
+    Renders the timeline and saves it to the specified file.
+    The format is determined by the file extension (png, pdf, svg, etc.).
+
+    Args:
+        filename: Output filename with extension (e.g., "schedule.png").
+        dpi: Resolution in dots per inch (default 150).
+        bbox_inches: Bounding box setting, "tight" removes extra whitespace.
+        transparent: If True, save with transparent background.
+
+    Example:
+        >>> visu.timeline("Schedule")
+        >>> visu.panel("Machine 1")
+        >>> visu.interval(0, 10, "Task A")
+        >>> visu.savefig("schedule.png")
+        >>> visu.savefig("schedule.pdf", dpi=300)
+    """
+    if not _MATPLOTLIB_AVAILABLE:
+        print("Visualization not available: matplotlib is not installed.")
+        print("Install with: pip install matplotlib")
+        return
+
+    if _current_timeline is None:
+        print("No timeline to save. Call timeline() first.")
+        return
+
+    fig = _render_timeline(_current_timeline)
+    fig.savefig(filename, dpi=dpi, bbox_inches=bbox_inches, transparent=transparent)
+    print(f"Saved visualization to: {filename}")
+
+
 def close() -> None:
     """
     Close the current figure and reset state.
@@ -593,6 +674,128 @@ def close() -> None:
         plt.close()
     _current_timeline = None
     _current_panel = None
+
+
+def legend(label: str, color: int | str) -> None:
+    """
+    Add an entry to the legend.
+
+    The legend is displayed when show() or savefig() is called.
+
+    Args:
+        label: Text label for the legend entry.
+        color: Color as integer index or color string.
+
+    Example:
+        >>> visu.timeline("Schedule")
+        >>> visu.legend("Task Type A", 0)
+        >>> visu.legend("Task Type B", 1)
+        >>> visu.legend("Maintenance", "gray")
+        >>> visu.show()
+    """
+    if _current_timeline is None:
+        timeline()
+
+    _current_timeline.legend_items.append(LegendItem(label=label, color=color))
+
+
+def vline(
+    x: int | float,
+    color: str = "red",
+    style: str = "dashed",
+    label: str | None = None,
+) -> None:
+    """
+    Add a vertical line annotation at a specific time.
+
+    The line spans all panels from top to bottom.
+
+    Args:
+        x: Time position for the vertical line.
+        color: Color for the line (default "red").
+        style: Line style - 'solid', 'dashed', or 'dotted' (default "dashed").
+        label: Optional label to display above the line.
+
+    Example:
+        >>> visu.timeline("Schedule", horizon=100)
+        >>> visu.vline(50, color="red", label="Deadline")
+        >>> visu.vline(25, color="green", style="dotted", label="Milestone")
+    """
+    if _current_timeline is None:
+        timeline()
+
+    _current_timeline.annotations.append(
+        AnnotationData(kind="vline", x=x, color=color, style=style, label=label)
+    )
+
+
+def hline(
+    y: int | float,
+    color: str = "red",
+    style: str = "dashed",
+    label: str | None = None,
+    panel_name: str | None = None,
+) -> None:
+    """
+    Add a horizontal line annotation at a specific value.
+
+    Useful for showing capacity limits on function panels.
+
+    Args:
+        y: Y-axis value for the horizontal line.
+        color: Color for the line (default "red").
+        style: Line style - 'solid', 'dashed', or 'dotted' (default "dashed").
+        label: Optional label to display at the line.
+        panel_name: Panel to add the line to (current panel if None).
+
+    Example:
+        >>> visu.panel("Resource Usage")
+        >>> visu.segment(0, 10, 3)
+        >>> visu.hline(5, color="red", label="Capacity")
+    """
+    if _current_panel is None:
+        panel()
+
+    # Store in current panel's annotations (we'll add this to Panel)
+    _current_timeline.annotations.append(
+        AnnotationData(
+            kind="hline",
+            y=y,
+            color=color,
+            style=style,
+            label=label,
+            value=panel_name or _current_panel.name,
+        )
+    )
+
+
+def annotate(
+    x: int | float,
+    text: str,
+    y: float = 0.95,
+    color: str = "black",
+    fontsize: int = 9,
+) -> None:
+    """
+    Add a text annotation at a specific time position.
+
+    Args:
+        x: Time position for the annotation.
+        text: Text content to display.
+        y: Vertical position (0.0 to 1.0, default 0.95 = near top).
+        color: Text color (default "black").
+        fontsize: Font size (default 9).
+
+    Example:
+        >>> visu.timeline("Schedule")
+        >>> visu.annotate(50, "Important event", color="red")
+    """
+    if _current_timeline is None:
+        timeline()
+
+    _current_timeline.annotations.append(
+        AnnotationData(kind="text", x=x, y=y, value=text, color=color)
+    )
 
 
 # =============================================================================
@@ -730,10 +933,49 @@ def _render_timeline(tl: Timeline) -> Figure:
     if tl.title:
         fig.suptitle(tl.title, fontsize=14, fontweight="bold")
 
+    # Build panel name to axes mapping
+    panel_axes = {}
+    for i, p in enumerate(tl.panels):
+        if p.name:
+            panel_axes[p.name] = axes[i]
+
     # Render each panel
     for i, p in enumerate(tl.panels):
         ax = axes[i]
         _render_panel(ax, p, tl.origin, horizon, i)
+
+    # Render global annotations
+    linestyle_map = {"solid": "-", "dashed": "--", "dotted": ":"}
+    for ann in tl.annotations:
+        if ann.kind == "vline":
+            # Draw vertical line on all panels
+            ls = linestyle_map.get(ann.style, "--")
+            for ax in axes:
+                ax.axvline(ann.x, color=ann.color, linestyle=ls, linewidth=1.5, alpha=0.8)
+            # Add label on top panel
+            if ann.label:
+                axes[0].text(
+                    ann.x, 1.02, ann.label,
+                    transform=axes[0].get_xaxis_transform(),
+                    ha="center", va="bottom", fontsize=8, color=ann.color
+                )
+        elif ann.kind == "hline":
+            # Draw horizontal line on specified panel
+            target_ax = panel_axes.get(ann.value, axes[-1])
+            ls = linestyle_map.get(ann.style, "--")
+            target_ax.axhline(ann.y, color=ann.color, linestyle=ls, linewidth=1.5, alpha=0.8)
+            if ann.label:
+                target_ax.text(
+                    horizon, ann.y, f" {ann.label}",
+                    ha="left", va="center", fontsize=8, color=ann.color
+                )
+        elif ann.kind == "text":
+            # Draw text annotation on top panel
+            axes[0].text(
+                ann.x, ann.y, str(ann.value),
+                transform=axes[0].get_xaxis_transform(),
+                ha="center", va="top", fontsize=9, color=ann.color
+            )
 
     # Set x-axis limits
     for ax in axes:
@@ -741,6 +983,21 @@ def _render_timeline(tl: Timeline) -> Figure:
 
     # Add x-axis label to bottom panel
     axes[-1].set_xlabel("Time")
+
+    # Add legend if items exist
+    if tl.legend_items:
+        handles = []
+        for item in tl.legend_items:
+            color = _get_color(item.color, 0)
+            patch = mpatches.Patch(color=color, label=item.label)
+            handles.append(patch)
+        fig.legend(
+            handles=handles,
+            loc="upper right",
+            bbox_to_anchor=(0.99, 0.99),
+            fontsize=9,
+            framealpha=0.9,
+        )
 
     plt.tight_layout()
     return fig
@@ -818,21 +1075,29 @@ def _render_interval_panel(ax: Axes, panel: Panel, panel_index: int) -> None:
         )
         ax.add_patch(rect)
 
-        # Add label
+        # Add label with overflow handling
         if intv.name:
             mid_x = (intv.start + intv.end) / 2
+            interval_width = intv.end - intv.start
             # Determine text color based on background brightness
             text_color = "white" if _is_dark_color(color) else "black"
-            ax.text(
-                mid_x,
-                y_center,
-                intv.name,
-                ha="center",
-                va="center",
-                fontsize=9,
-                color=text_color,
-                fontweight="bold",
-            )
+
+            # Estimate if text fits (rough heuristic: ~0.7 units per character at fontsize 9)
+            # This uses data coordinates, so we need to check relative to interval width
+            display_name = _fit_text_to_width(intv.name, interval_width)
+
+            if display_name:
+                ax.text(
+                    mid_x,
+                    y_center,
+                    display_name,
+                    ha="center",
+                    va="center",
+                    fontsize=9,
+                    color=text_color,
+                    fontweight="bold",
+                    clip_on=True,
+                )
 
 
 def _render_function_panel(
@@ -873,6 +1138,35 @@ def _render_function_panel(
     ax.set_ylim(0, max_value * 1.1)
 
 
+def _fit_text_to_width(text: str, width: float, char_width: float = 0.8) -> str | None:
+    """
+    Fit text to a given width, truncating with ellipsis if needed.
+
+    Args:
+        text: The text to fit.
+        width: Available width in data units.
+        char_width: Estimated width per character in data units.
+
+    Returns:
+        The fitted text, possibly truncated with "...", or None if too small.
+    """
+    # Estimate how many characters fit
+    max_chars = int(width / char_width)
+
+    if max_chars < 1:
+        # Too small to show anything
+        return None
+    elif max_chars < 3:
+        # Very small: show first character only
+        return text[0] if len(text) >= 1 else text
+    elif len(text) <= max_chars:
+        # Text fits completely
+        return text
+    else:
+        # Truncate with ellipsis
+        return text[: max_chars - 2] + ".."
+
+
 def _is_dark_color(color: str) -> bool:
     """
     Determine if a color is dark (for choosing text color).
@@ -888,6 +1182,100 @@ def _is_dark_color(color: str) -> bool:
         return luminance < 0.5
     except (ValueError, KeyError):
         return False
+
+
+# =============================================================================
+# SUBPROCESS-SAFE VISUALIZATION
+# =============================================================================
+
+
+def savefig_safe(
+    filename: str,
+    visu_data: dict,
+    title: str = "Schedule",
+    horizon: int | float | None = None,
+    legends: list[tuple[str, int | str]] | None = None,
+    vlines: list[tuple[int | float, str, str, str | None]] | None = None,
+) -> None:
+    """
+    Save visualization in a subprocess to avoid pycsp3 operator conflicts.
+
+    This function runs matplotlib in a separate Python process, which
+    avoids conflicts with pycsp3's operator monkey-patching.
+
+    Args:
+        filename: Output filename with extension (e.g., "schedule.png").
+        visu_data: Dictionary with visualization data containing:
+            - "panels": List of panel dicts with "name" and "intervals"
+              where intervals are lists of (start, end, label, color)
+        title: Title for the figure.
+        horizon: End of the time axis (auto-computed if None).
+        legends: Optional list of (label, color) tuples for the legend.
+        vlines: Optional list of (x, color, style, label) tuples for vertical lines.
+
+    Example:
+        >>> # Extract data from solved model
+        >>> visu_data = {
+        ...     "panels": [
+        ...         {"name": "Machine 1", "intervals": [(0, 10, "Task A", 0), (15, 25, "Task B", 1)]},
+        ...         {"name": "Machine 2", "intervals": [(5, 20, "Task C", 2)]},
+        ...     ]
+        ... }
+        >>> visu.savefig_safe("schedule.png", visu_data, title="Job Shop Schedule")
+    """
+    import subprocess
+    import json
+
+    # Build the visualization script
+    visu_script = f'''
+import json
+import matplotlib
+matplotlib.use('Agg')
+from pycsp3_scheduling import visu
+
+visu_data = {json.dumps(visu_data)}
+title = {json.dumps(title)}
+horizon = {json.dumps(horizon)}
+legends = {json.dumps(legends)}
+vlines = {json.dumps(vlines)}
+filename = {json.dumps(filename)}
+
+# Compute horizon if not provided
+if horizon is None:
+    horizon = 0
+    for panel_data in visu_data.get("panels", []):
+        for intv in panel_data.get("intervals", []):
+            horizon = max(horizon, intv[1])
+    horizon = max(horizon, 10) + 10
+
+visu.reset()
+visu.timeline(title, origin=0, horizon=horizon)
+
+# Add legends
+if legends:
+    for label, color in legends:
+        visu.legend(label, color)
+
+# Add vertical lines
+if vlines:
+    for x, color, style, label in vlines:
+        visu.vline(x, color=color, style=style, label=label)
+
+# Add panels
+for panel_data in visu_data.get("panels", []):
+    visu.panel(panel_data.get("name"))
+    for intv in panel_data.get("intervals", []):
+        start, end, name, color = intv[0], intv[1], intv[2] if len(intv) > 2 else None, intv[3] if len(intv) > 3 else None
+        visu.interval(start, end, name, color=color)
+
+visu.savefig(filename)
+'''
+    result = subprocess.run(["python", "-c", visu_script], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Visualization error: {result.stderr}")
+    else:
+        if result.stdout:
+            print(result.stdout, end="")
 
 
 # =============================================================================

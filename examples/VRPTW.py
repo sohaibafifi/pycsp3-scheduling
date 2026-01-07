@@ -227,7 +227,7 @@ for v in range(n_vehicles):
 minimize(Sum(distance_terms))
 
 # Solve
-result = solve(sols=5)
+result = solve(sols=2)
 
 if result in (SAT, OPTIMUM):
     print("\n" + "=" * 60)
@@ -274,32 +274,48 @@ else:
     print("No solution found")
 
 if result in (SAT, OPTIMUM):
-    visu.reset()
-    makespan = max(interval_value(main_visits[c]).end for c in range(n_customers))
-    visu.timeline("VRPTW Schedule", origin=0, horizon=makespan + 10)
+    # Extract visualization data (convert to plain Python ints to avoid pycsp3 issues)
+    panels = []
 
     # One panel per vehicle
     for v in range(n_vehicles):
-        visu.panel(f"Vehicle {v}")
-
-        # Only show customer visits, not depot
+        intervals = []
         for c in range(n_customers):
             val = interval_value(visits[v][c])
             if val is not None:
                 customer_id = c + 1
-                visu.interval(
-                    val.start, val.end,
-                    f"C{customer_id}",
-                    color=customer_id
-                )
+                intervals.append((int(val.start), int(val.end), f"C{customer_id}", customer_id))
+        panels.append({"name": f"Vehicle {v}", "intervals": intervals})
 
     # Panel showing all visits (overview)
-    visu.panel("All Customers")
+    all_intervals = []
     for c in range(n_customers):
         val = interval_value(main_visits[c])
-        visu.interval(val.start, val.end, f"C{c + 1}", color=c + 1)
+        customer_id = c + 1
+        all_intervals.append((int(val.start), int(val.end), f"C{customer_id}", customer_id))
+    panels.append({"name": "All Customers", "intervals": all_intervals})
 
+    visu_data = {"panels": panels}
+
+    # Compute makespan and tightest deadline
+    makespan = max(intv[1] for intv in all_intervals)
+    tightest_deadline = min(customers[c][1] for c in range(1, n_customers + 1))
+
+    # Build legend entries
+    legends = [(f"Customer {c}", c) for c in range(1, n_customers + 1)]
+
+    # Build vertical line markers
+    vlines = [(tightest_deadline, "red", "dashed", "Tight deadline")]
+
+    # Use subprocess-safe visualization to avoid pycsp3 operator conflicts
     if visu.is_visu_enabled():
-        visu.show()
+        visu.savefig_safe(
+            "vrptw_schedule.png",
+            visu_data,
+            title="VRPTW Schedule",
+            horizon=makespan + 10,
+            legends=legends,
+            vlines=vlines,
+        )
     else:
         print("Visualization disabled (matplotlib not available)")

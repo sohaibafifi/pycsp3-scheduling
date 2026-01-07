@@ -345,3 +345,142 @@ class TestDataClasses:
         assert tl.origin == 0
         assert tl.horizon is None
         assert tl.panels == []
+
+    def test_annotation_data_creation(self):
+        """AnnotationData can be created."""
+        ann = visu.AnnotationData(kind="vline", x=50, color="red", label="Deadline")
+        assert ann.kind == "vline"
+        assert ann.x == 50
+        assert ann.color == "red"
+        assert ann.label == "Deadline"
+        assert ann.style == "dashed"
+
+    def test_legend_item_creation(self):
+        """LegendItem can be created."""
+        item = visu.LegendItem(label="Task A", color=0)
+        assert item.label == "Task A"
+        assert item.color == 0
+
+
+class TestLegend:
+    """Tests for legend functionality."""
+
+    def test_legend_adds_item(self):
+        """legend() adds item to timeline."""
+        visu.reset()
+        visu.timeline("Test")
+        visu.legend("Task Type A", 0)
+        visu.legend("Task Type B", 1)
+
+        assert len(visu._current_timeline.legend_items) == 2
+        assert visu._current_timeline.legend_items[0].label == "Task Type A"
+        assert visu._current_timeline.legend_items[1].color == 1
+        visu.reset()
+
+    def test_legend_auto_creates_timeline(self):
+        """legend() creates timeline if needed."""
+        visu.reset()
+        visu.legend("Test", "red")
+
+        assert visu._current_timeline is not None
+        assert len(visu._current_timeline.legend_items) == 1
+        visu.reset()
+
+
+class TestAnnotations:
+    """Tests for annotation functionality."""
+
+    def test_vline_adds_annotation(self):
+        """vline() adds vertical line annotation."""
+        visu.reset()
+        visu.timeline("Test")
+        visu.vline(50, color="red", label="Deadline")
+
+        assert len(visu._current_timeline.annotations) == 1
+        ann = visu._current_timeline.annotations[0]
+        assert ann.kind == "vline"
+        assert ann.x == 50
+        assert ann.color == "red"
+        assert ann.label == "Deadline"
+        visu.reset()
+
+    def test_hline_adds_annotation(self):
+        """hline() adds horizontal line annotation."""
+        visu.reset()
+        visu.timeline("Test")
+        visu.panel("Resource")
+        visu.hline(5, color="blue", label="Capacity")
+
+        assert len(visu._current_timeline.annotations) == 1
+        ann = visu._current_timeline.annotations[0]
+        assert ann.kind == "hline"
+        assert ann.y == 5
+        assert ann.color == "blue"
+        visu.reset()
+
+    def test_annotate_adds_text(self):
+        """annotate() adds text annotation."""
+        visu.reset()
+        visu.timeline("Test")
+        visu.annotate(25, "Important", color="green")
+
+        assert len(visu._current_timeline.annotations) == 1
+        ann = visu._current_timeline.annotations[0]
+        assert ann.kind == "text"
+        assert ann.x == 25
+        assert ann.value == "Important"
+        visu.reset()
+
+
+class TestTextOverflow:
+    """Tests for text overflow handling."""
+
+    def test_fit_text_to_width_fits(self):
+        """Text that fits is returned unchanged."""
+        result = visu._fit_text_to_width("Task", 10.0)
+        assert result == "Task"
+
+    def test_fit_text_to_width_truncates(self):
+        """Long text is truncated with ellipsis."""
+        result = visu._fit_text_to_width("Very Long Task Name", 5.0, char_width=0.8)
+        assert result is not None
+        assert len(result) <= 6
+        assert result.endswith("..")
+
+    def test_fit_text_to_width_very_small(self):
+        """Very small width shows first char or None."""
+        result = visu._fit_text_to_width("Task", 1.5, char_width=0.8)
+        assert result in ("T", "Ta", None) or (result and len(result) <= 2)
+
+    def test_fit_text_to_width_too_small(self):
+        """Width too small returns None."""
+        result = visu._fit_text_to_width("Task", 0.5, char_width=0.8)
+        assert result is None
+
+
+class TestSaveFig:
+    """Tests for savefig functionality."""
+
+    def test_savefig_creates_file(self, tmp_path):
+        """savefig() creates an image file."""
+        visu.reset()
+        visu.timeline("Test")
+        visu.panel("Machine")
+        visu.interval(0, 10, "Task")
+
+        output_file = tmp_path / "test.png"
+        visu.savefig(str(output_file))
+
+        assert output_file.exists()
+        assert output_file.stat().st_size > 0
+        visu.close()
+        visu.reset()
+
+    def test_savefig_without_timeline(self, capsys):
+        """savefig() without timeline prints message."""
+        visu.reset()
+        visu.savefig("/tmp/test.png")
+
+        captured = capsys.readouterr()
+        assert "No timeline to save" in captured.out
+        visu.reset()
