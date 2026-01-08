@@ -227,7 +227,7 @@ for v in range(n_vehicles):
 minimize(Sum(distance_terms))
 
 # Solve
-result = solve(sols=2)
+result = solve(sols=5, verbose=True)
 
 if result in (SAT, OPTIMUM):
     print("\n" + "=" * 60)

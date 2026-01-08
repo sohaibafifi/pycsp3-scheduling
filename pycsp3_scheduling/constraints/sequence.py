@@ -160,9 +160,43 @@ def SeqNoOverlap(
 
     from pycsp3 import NoOverlap
 
+    # Check if any interval is optional
+    has_optional = any(interval.optional for interval in intervals)
+
     if transition_matrix is None:
-        # Simple no-overlap without transition times
-        return NoOverlap(origins=origins, lengths=lengths, zero_ignored=zero_ignored)
+        if has_optional:
+            # With optional intervals, decompose into pairwise constraints
+            # because basic NoOverlap doesn't handle optionality
+            Node, TypeNode = _get_node_builders()
+            constraints = []
+            for i in range(len(intervals)):
+                for j in range(i + 1, len(intervals)):
+                    interval_i = intervals[i]
+                    interval_j = intervals[j]
+
+                    end_i = _build_end_expr(interval_i, Node, TypeNode)
+                    start_j = start_var(interval_j)
+                    end_j = _build_end_expr(interval_j, Node, TypeNode)
+                    start_i = start_var(interval_i)
+
+                    i_before_j = Node.build(TypeNode.LE, end_i, start_j)
+                    j_before_i = Node.build(TypeNode.LE, end_j, start_i)
+
+                    disjuncts = [i_before_j, j_before_i]
+
+                    if interval_i.optional:
+                        pres_i = presence_var(interval_i)
+                        disjuncts.insert(0, Node.build(TypeNode.EQ, pres_i, 0))
+
+                    if interval_j.optional:
+                        pres_j = presence_var(interval_j)
+                        disjuncts.insert(0, Node.build(TypeNode.EQ, pres_j, 0))
+
+                    constraints.append(Node.build(TypeNode.OR, *disjuncts))
+            return constraints
+        else:
+            # Simple no-overlap without transition times (all mandatory)
+            return NoOverlap(origins=origins, lengths=lengths, zero_ignored=zero_ignored)
 
     # With transition matrix: add setup times between intervals.
     # - is_direct=False: apply transition times between any ordered pair (After)
@@ -175,8 +209,10 @@ def SeqNoOverlap(
     constraints = []
     types = seq_var.types
 
-    # Add basic non-overlap first
-    constraints.append(NoOverlap(origins=origins, lengths=lengths, zero_ignored=zero_ignored))
+    # Only add basic non-overlap if all intervals are mandatory
+    # (the pairwise transition constraints subsume non-overlap for optional intervals)
+    if not has_optional:
+        constraints.append(NoOverlap(origins=origins, lengths=lengths, zero_ignored=zero_ignored))
 
     if is_direct:
         starts = origins

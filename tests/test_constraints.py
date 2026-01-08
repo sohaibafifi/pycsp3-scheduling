@@ -109,8 +109,10 @@ class TestSeqNoOverlap:
         seq = SequenceVar(intervals=[task, task2], name="machine")
 
         # Should not raise - optional intervals now supported
-        ctr = SeqNoOverlap(seq)
-        assert isinstance(ctr, ECtr)
+        # Returns a list of pairwise constraints when there are optional intervals
+        ctrs = SeqNoOverlap(seq)
+        assert isinstance(ctrs, list)
+        assert len(ctrs) >= 1
 
 
 # =============================================================================
