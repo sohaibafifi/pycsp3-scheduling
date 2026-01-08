@@ -25,12 +25,16 @@ if TYPE_CHECKING:
 # Cache for type_of_next/type_of_prev variables to avoid duplication
 _type_of_next_vars: dict[tuple[int, int], Any] = {}
 _type_of_prev_vars: dict[tuple[int, int], Any] = {}
+_sequence_position_vars: dict[int, list[Any]] = {}
+_sequence_present_count_vars: dict[int, Any] = {}
 
 
 def clear_sequence_expr_cache() -> None:
     """Clear cached sequence expression variables."""
     _type_of_next_vars.clear()
     _type_of_prev_vars.clear()
+    _sequence_position_vars.clear()
+    _sequence_present_count_vars.clear()
 
 
 def _validate_sequence_and_interval(sequence, interval: IntervalVar) -> tuple[list, int]:
@@ -58,6 +62,129 @@ def _validate_sequence_and_interval(sequence, interval: IntervalVar) -> tuple[li
         raise ValueError(f"interval '{interval.name}' is not in the sequence")
 
     return intervals, idx
+
+
+def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
+    """Create (or reuse) position variables and ordering constraints for a sequence."""
+    if sequence._id in _sequence_position_vars:
+        return (
+            _sequence_position_vars[sequence._id],
+            _sequence_present_count_vars[sequence._id],
+        )
+
+    try:
+        from pycsp3 import Var, satisfy
+        from pycsp3.classes.nodes import Node, TypeNode
+    except ImportError:
+        raise ImportError("pycsp3 is required for sequence position variables")
+
+    from pycsp3_scheduling.constraints._pycsp3 import (
+        start_var,
+        length_value,
+        presence_var,
+    )
+
+    intervals = sequence.intervals
+    n = len(intervals)
+
+    positions: list[Any] = []
+    presences: list[Any] = []
+
+    for interval in intervals:
+        pres = presence_var(interval) if interval.optional else 1
+        presences.append(pres)
+
+        pos_dom = range(0, n + 1) if interval.optional else range(1, n + 1)
+        pos_var = Var(dom=pos_dom, id=f"seqpos{sequence._id}_{interval._id}")
+        positions.append(pos_var)
+
+        if interval.optional:
+            # Presence <-> position 0
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.EQ, pres, 1),
+                    Node.build(TypeNode.EQ, pos_var, 0),
+                )
+            )
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.NE, pos_var, 0),
+                    Node.build(TypeNode.EQ, pres, 0),
+                )
+            )
+
+    # Count of present intervals
+    count_var = Var(dom=range(0, n + 1), id=f"seqcount{sequence._id}")
+    if presences:
+        if len(presences) == 1:
+            sum_presences = presences[0]
+        else:
+            sum_presences = Node.build(TypeNode.ADD, *presences)
+        satisfy(Node.build(TypeNode.EQ, count_var, sum_presences))
+    else:
+        satisfy(Node.build(TypeNode.EQ, count_var, 0))
+
+    # Present intervals must occupy positions 1..count_var (no gaps)
+    for interval, pos_var, pres in zip(intervals, positions, presences):
+        if interval.optional:
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.EQ, pres, 0),
+                    Node.build(TypeNode.LE, pos_var, count_var),
+                )
+            )
+        else:
+            satisfy(Node.build(TypeNode.LE, pos_var, count_var))
+
+    # All-different positions for present intervals
+    for i in range(n):
+        for j in range(i + 1, n):
+            pos_i = positions[i]
+            pos_j = positions[j]
+            interval_i = intervals[i]
+            interval_j = intervals[j]
+
+            if interval_i.optional or interval_j.optional:
+                disjuncts = [Node.build(TypeNode.NE, pos_i, pos_j)]
+                if interval_i.optional:
+                    disjuncts.insert(0, Node.build(TypeNode.EQ, presences[i], 0))
+                if interval_j.optional:
+                    disjuncts.insert(0, Node.build(TypeNode.EQ, presences[j], 0))
+                satisfy(Node.build(TypeNode.OR, *disjuncts))
+            else:
+                satisfy(Node.build(TypeNode.NE, pos_i, pos_j))
+
+    # Link temporal order to positions
+    starts = [start_var(interval) for interval in intervals]
+    ends: list[Any] = []
+    for interval, start in zip(intervals, starts):
+        length = length_value(interval)
+        if isinstance(length, int):
+            end = Node.build(TypeNode.ADD, start, length) if length > 0 else start
+        else:
+            end = Node.build(TypeNode.ADD, start, length)
+        ends.append(end)
+
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            disjuncts = [
+                Node.build(TypeNode.LT, starts[j], ends[i]),
+                Node.build(TypeNode.LT, positions[i], positions[j]),
+            ]
+            if intervals[i].optional:
+                disjuncts.insert(0, Node.build(TypeNode.EQ, presences[i], 0))
+            if intervals[j].optional:
+                disjuncts.insert(0, Node.build(TypeNode.EQ, presences[j], 0))
+            satisfy(Node.build(TypeNode.OR, *disjuncts))
+
+    _sequence_position_vars[sequence._id] = positions
+    _sequence_present_count_vars[sequence._id] = count_var
+    return positions, count_var
 
 
 # =============================================================================
@@ -266,232 +393,136 @@ def _build_type_of_next_var(
 ) -> Any:
     """
     Build a pycsp3 variable for type_of_next with appropriate constraints.
-    
-    Strategy: Use biconditional channeling.
-    For each candidate j (j != idx), we express:
-        result = types[j]  <=>  (j is the immediate successor of interval)
-    And for the special "last" case:
-        result = last_value  <=>  (no interval comes after interval)
-    And for optional intervals:
-        result = absent_value  <=>  (interval is absent)
+
+    Successor-variable encoding using position variables:
+    - Each interval has a position (0 if absent, otherwise 1..m).
+    - The successor index is the interval at position +1, or a last/absent marker.
+    - Use an element constraint to map successor index to type values.
     """
     try:
         from pycsp3 import Var, satisfy
         from pycsp3.classes.nodes import Node, TypeNode
     except ImportError:
         raise ImportError("pycsp3 is required for type_of_next")
-    
+
     from pycsp3_scheduling.constraints._pycsp3 import (
-        start_var,
-        length_value,
         presence_var,
     )
-    
+    from pycsp3_scheduling.expressions.element import element
+
     intervals = sequence.intervals
     types = sequence.types
     n = len(intervals)
-    
-    # Determine valid domain values for result
-    # For mandatory intervals: can be any type of other intervals, or last_value
-    # For optional interval: also absent_value
-    valid_values = set()
-    other_indices = [j for j in range(n) if j != idx]
-    for j in other_indices:
-        valid_values.add(types[j])
-    valid_values.add(last_value)
+
+    # Build extended types array: [type_0, ..., type_{n-1}, last_value, absent_value]
+    last_idx = n
+    absent_idx = n + 1
+    types_extended = list(types) + [last_value, absent_value]
+
+    # Successor index variable (interval index, last, absent)
+    next_idx_domain = set(range(n)) - {idx}
+    next_idx_domain.add(last_idx)
     if interval.optional:
-        valid_values.add(absent_value)
-    
-    # Note: XCSP3 IDs must start with a letter, not underscore
-    var_id = f"tonext{sequence._id}_{interval._id}"
-    result_var = Var(dom=valid_values, id=var_id)
-    
-    # Get presence and timing for reference interval
-    my_start = start_var(interval)
-    my_length = length_value(interval)
-    if isinstance(my_length, int):
-        my_end = Node.build(TypeNode.ADD, my_start, my_length) if my_length > 0 else my_start
+        next_idx_domain.add(absent_idx)
+
+    next_idx = Var(dom=next_idx_domain, id=f"succ{sequence._id}_{interval._id}")
+
+    # Result variable mapped from successor index
+    result_domain = set(types_extended[j] for j in next_idx_domain)
+    result_var = Var(dom=result_domain, id=f"tonext{sequence._id}_{interval._id}")
+    satisfy(result_var == element(types_extended, next_idx))
+
+    # Position-based successor channeling
+    positions, count_var = _ensure_sequence_positions(sequence)
+    pos_i = positions[idx]
+    pres_i = presence_var(interval) if interval.optional else 1
+    pos_i_plus_1 = Node.build(TypeNode.ADD, pos_i, 1)
+
+    if interval.optional:
+        # Absent <-> successor is absent marker
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.EQ, pres_i, 1),
+                Node.build(TypeNode.EQ, next_idx, absent_idx),
+            )
+        )
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, next_idx, absent_idx),
+                Node.build(TypeNode.EQ, pres_i, 0),
+            )
+        )
+
+    # Last position <-> successor is last marker
+    if interval.optional:
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.EQ, pres_i, 0),
+                Node.build(TypeNode.NE, pos_i, count_var),
+                Node.build(TypeNode.EQ, next_idx, last_idx),
+            )
+        )
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, next_idx, last_idx),
+                Node.build(TypeNode.EQ, pres_i, 1),
+            )
+        )
     else:
-        my_end = Node.build(TypeNode.ADD, my_start, my_length)
-    
-    # Special case: only one other interval, both mandatory
-    if len(other_indices) == 1 and not interval.optional:
-        j = other_indices[0]
-        other = intervals[j]
-        if not other.optional:
-            other_type = types[j]
-            other_start = start_var(other)
-            
-            # j_after_me: my_end <= other_start
-            j_after_me = Node.build(TypeNode.LE, my_end, other_start)
-            
-            # Biconditional: result = other_type <=> j_after_me
-            # = (j_after_me => result = other_type) AND (result = other_type => j_after_me)
-            # = (NOT j_after_me OR result = other_type) AND (result != other_type OR j_after_me)
-            
-            # For the second part, since domain is {other_type, last_value}:
-            # result != other_type  means  result = last_value
-            
-            # Constraint 1: NOT j_after_me OR result = other_type
-            satisfy(
-                Node.build(TypeNode.OR, 
-                    Node.build(TypeNode.NOT, j_after_me), 
-                    Node.build(TypeNode.EQ, result_var, other_type))
-            )
-            # Constraint 2: result = last_value OR j_after_me
-            satisfy(
-                Node.build(TypeNode.OR, 
-                    Node.build(TypeNode.EQ, result_var, last_value),
-                    j_after_me)
-            )
-            return result_var
-    
-    # General case: multiple candidates or optional intervals
-    my_pres = presence_var(interval) if interval.optional else None
-    
-    # Handle optional interval: if absent, result = absent_value
-    if interval.optional:
-        # my_pres = 1 OR result = absent_value
         satisfy(
-            Node.build(TypeNode.OR,
-                Node.build(TypeNode.EQ, my_pres, 1),
-                Node.build(TypeNode.EQ, result_var, absent_value))
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, pos_i, count_var),
+                Node.build(TypeNode.EQ, next_idx, last_idx),
+            )
         )
-        # Also: my_pres = 0 => result = absent_value
-        # which is: my_pres = 1 OR result = absent_value (same as above)
-        
-        # And: result = absent_value => my_pres = 0
-        # which is: result != absent_value OR my_pres = 0
+
+    satisfy(
+        Node.build(
+            TypeNode.OR,
+            Node.build(TypeNode.NE, next_idx, last_idx),
+            Node.build(TypeNode.EQ, pos_i, count_var),
+        )
+    )
+
+    # Successor mapping: pos_j == pos_i + 1 <-> next_idx = j
+    for j in range(n):
+        if j == idx:
+            continue
+        pos_j = positions[j]
+
+        # next_idx = j => pos_j = pos_i + 1
         satisfy(
-            Node.build(TypeNode.OR,
-                Node.build(TypeNode.NE, result_var, absent_value),
-                Node.build(TypeNode.EQ, my_pres, 0))
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, next_idx, j),
+                Node.build(TypeNode.EQ, pos_j, pos_i_plus_1),
+            )
         )
-    
-    # For each candidate j, build the condition "j is immediate successor"
-    for j in other_indices:
-        other = intervals[j]
-        other_type = types[j]
-        other_start = start_var(other)
-        other_pres = presence_var(other) if other.optional else None
-        other_length = length_value(other)
-        if isinstance(other_length, int):
-            other_end = Node.build(TypeNode.ADD, other_start, other_length) if other_length > 0 else other_start
-        else:
-            other_end = Node.build(TypeNode.ADD, other_start, other_length)
-        
-        # Base condition: j comes after me
-        j_after_me = Node.build(TypeNode.LE, my_end, other_start)
-        
-        # Build "no one between me and j" conditions
-        no_between_parts = []
-        for k in other_indices:
-            if k == j:
-                continue
-            third = intervals[k]
-            third_start = start_var(third)
-            third_pres = presence_var(third) if third.optional else None
-            third_length = length_value(third)
-            if isinstance(third_length, int):
-                third_end = Node.build(TypeNode.ADD, third_start, third_length) if third_length > 0 else third_start
-            else:
-                third_end = Node.build(TypeNode.ADD, third_start, third_length)
-            
-            # k is NOT between me and j means:
-            # k absent OR k ends before/at me ends OR k starts at/after j starts
-            # = k absent OR NOT(my_end <= k_start AND k_end <= other_start)
-            # = k absent OR my_end > k_start OR k_end > other_start
-            k_not_after_me = Node.build(TypeNode.GT, my_end, third_start)
-            k_not_before_j = Node.build(TypeNode.GT, third_end, other_start)
-            
-            if third.optional:
-                k_absent = Node.build(TypeNode.EQ, third_pres, 0)
-                no_k_between = Node.build(TypeNode.OR, k_absent, k_not_after_me, k_not_before_j)
-            else:
-                no_k_between = Node.build(TypeNode.OR, k_not_after_me, k_not_before_j)
-            no_between_parts.append(no_k_between)
-        
-        # Full condition: j is immediate successor
-        # = j present (if optional) AND j after me AND no one between
-        cond_parts = [j_after_me]
-        if other.optional:
-            cond_parts.append(Node.build(TypeNode.EQ, other_pres, 1))
-        if no_between_parts:
-            if len(no_between_parts) == 1:
-                cond_parts.append(no_between_parts[0])
-            else:
-                cond_parts.append(Node.build(TypeNode.AND, *no_between_parts))
-        
-        if len(cond_parts) == 1:
-            j_is_next = cond_parts[0]
-        else:
-            j_is_next = Node.build(TypeNode.AND, *cond_parts)
-        
-        # Add presence of current interval if optional
+
+        # If i is present and pos_j = pos_i + 1, then next_idx = j
         if interval.optional:
-            j_is_next = Node.build(TypeNode.AND, Node.build(TypeNode.EQ, my_pres, 1), j_is_next)
-        
-        # Biconditional channeling: j_is_next <=> result = other_type
-        # = (j_is_next => result = other_type) AND (result = other_type => j_is_next)
-        
-        # Part 1: j_is_next => result = other_type
-        # = NOT j_is_next OR result = other_type
-        satisfy(
-            Node.build(TypeNode.OR,
-                Node.build(TypeNode.NOT, j_is_next),
-                Node.build(TypeNode.EQ, result_var, other_type))
-        )
-        
-        # Part 2: result = other_type => j_is_next
-        # = result != other_type OR j_is_next
-        satisfy(
-            Node.build(TypeNode.OR,
-                Node.build(TypeNode.NE, result_var, other_type),
-                j_is_next)
-        )
-    
-    # Handle "is_last" case: if no one comes after me, result = last_value
-    # "no one after me" = AND for all j: (j absent OR j not after me)
-    no_one_after_parts = []
-    for j in other_indices:
-        other = intervals[j]
-        other_start = start_var(other)
-        other_pres = presence_var(other) if other.optional else None
-        
-        # j not after me: my_end > other_start
-        j_not_after = Node.build(TypeNode.GT, my_end, other_start)
-        
-        if other.optional:
-            j_absent = Node.build(TypeNode.EQ, other_pres, 0)
-            no_j_after = Node.build(TypeNode.OR, j_absent, j_not_after)
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.EQ, pres_i, 0),
+                    Node.build(TypeNode.NE, pos_j, pos_i_plus_1),
+                    Node.build(TypeNode.EQ, next_idx, j),
+                )
+            )
         else:
-            no_j_after = j_not_after
-        no_one_after_parts.append(no_j_after)
-    
-    if len(no_one_after_parts) == 1:
-        no_one_after = no_one_after_parts[0]
-    else:
-        no_one_after = Node.build(TypeNode.AND, *no_one_after_parts)
-    
-    # Add presence condition if optional
-    is_last_cond = no_one_after
-    if interval.optional:
-        is_last_cond = Node.build(TypeNode.AND, Node.build(TypeNode.EQ, my_pres, 1), is_last_cond)
-    
-    # Biconditional: is_last_cond <=> result = last_value
-    # Part 1: is_last_cond => result = last_value
-    satisfy(
-        Node.build(TypeNode.OR,
-            Node.build(TypeNode.NOT, is_last_cond),
-            Node.build(TypeNode.EQ, result_var, last_value))
-    )
-    # Part 2: result = last_value => is_last_cond
-    satisfy(
-        Node.build(TypeNode.OR,
-            Node.build(TypeNode.NE, result_var, last_value),
-            is_last_cond)
-    )
-    
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.NE, pos_j, pos_i_plus_1),
+                    Node.build(TypeNode.EQ, next_idx, j),
+                )
+            )
+
     return result_var
 
 
@@ -689,147 +720,121 @@ def _build_type_of_prev_var(
         raise ImportError("pycsp3 is required for type_of_prev")
     
     from pycsp3_scheduling.constraints._pycsp3 import (
-        start_var,
-        length_value,
         presence_var,
     )
+    from pycsp3_scheduling.expressions.element import element
     
     intervals = sequence.intervals
     types = sequence.types
     n = len(intervals)
     
-    # Build domain: all possible types + first_value + absent_value
-    all_types = set(types)
-    all_types.add(first_value)
-    all_types.add(absent_value)
-    
-    # Create the variable
-    # Note: XCSP3 IDs must start with a letter, not underscore
-    var_id = f"toprev{sequence._id}_{interval._id}"
-    result_var = Var(dom=all_types, id=var_id)
-    
-    # Get presence and timing for reference interval
-    my_pres = presence_var(interval)
-    my_start = start_var(interval)
-    
-    # Constraint 1: If interval is absent, result = absent_value
-    # NOT(present) implies result == absent_value
-    # = present OR (result == absent_value)
+    # Build extended types array: [type_0, ..., type_{n-1}, first_value, absent_value]
+    first_idx = n
+    absent_idx = n + 1
+    types_extended = list(types) + [first_value, absent_value]
+
+    # Predecessor index variable (interval index, first, absent)
+    prev_idx_domain = set(range(n)) - {idx}
+    prev_idx_domain.add(first_idx)
+    if interval.optional:
+        prev_idx_domain.add(absent_idx)
+
+    prev_idx = Var(dom=prev_idx_domain, id=f"pred{sequence._id}_{interval._id}")
+
+    # Result variable mapped from predecessor index
+    result_domain = set(types_extended[j] for j in prev_idx_domain)
+    result_var = Var(dom=result_domain, id=f"toprev{sequence._id}_{interval._id}")
+    satisfy(result_var == element(types_extended, prev_idx))
+
+    # Position-based predecessor channeling
+    positions, _count_var = _ensure_sequence_positions(sequence)
+    pos_i = positions[idx]
+    pres_i = presence_var(interval) if interval.optional else 1
+    pos_i_minus_1 = Node.build(TypeNode.ADD, pos_i, -1)
+
+    if interval.optional:
+        # Absent <-> predecessor is absent marker
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.EQ, pres_i, 1),
+                Node.build(TypeNode.EQ, prev_idx, absent_idx),
+            )
+        )
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, prev_idx, absent_idx),
+                Node.build(TypeNode.EQ, pres_i, 0),
+            )
+        )
+
+    # First position <-> predecessor is first marker
     if interval.optional:
         satisfy(
             Node.build(
                 TypeNode.OR,
-                Node.build(TypeNode.EQ, my_pres, 1),
-                Node.build(TypeNode.EQ, result_var, absent_value)
+                Node.build(TypeNode.EQ, pres_i, 0),
+                Node.build(TypeNode.NE, pos_i, 1),
+                Node.build(TypeNode.EQ, prev_idx, first_idx),
             )
         )
-    
-    # For each other interval j:
-    # If j is present AND j comes before interval AND j is the immediate predecessor,
-    # then result_var == types[j]
-    
-    for j, other in enumerate(intervals):
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, prev_idx, first_idx),
+                Node.build(TypeNode.EQ, pres_i, 1),
+            )
+        )
+    else:
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, pos_i, 1),
+                Node.build(TypeNode.EQ, prev_idx, first_idx),
+            )
+        )
+
+    satisfy(
+        Node.build(
+            TypeNode.OR,
+            Node.build(TypeNode.NE, prev_idx, first_idx),
+            Node.build(TypeNode.EQ, pos_i, 1),
+        )
+    )
+
+    # Predecessor mapping: pos_j == pos_i - 1 <-> prev_idx = j
+    for j in range(n):
         if j == idx:
             continue
-        
-        other_type = types[j]
-        other_pres = presence_var(other)
-        other_start = start_var(other)
-        other_length = length_value(other)
-        if isinstance(other_length, int):
-            other_end = Node.build(TypeNode.ADD, other_start, other_length) if other_length > 0 else other_start
-        else:
-            other_end = Node.build(TypeNode.ADD, other_start, other_length)
-        
-        # Condition: j is present AND comes before interval (other_end <= my_start)
-        j_before_me = Node.build(TypeNode.LE, other_end, my_start)
-        
-        # Condition: no other interval k is between j and me
-        no_one_between_conditions = []
-        for k, third in enumerate(intervals):
-            if k == idx or k == j:
-                continue
-            
-            k_pres = presence_var(third)
-            k_start = start_var(third)
-            k_length = length_value(third)
-            if isinstance(k_length, int):
-                k_end = Node.build(TypeNode.ADD, k_start, k_length) if k_length > 0 else k_start
-            else:
-                k_end = Node.build(TypeNode.ADD, k_start, k_length)
-            
-            # k is NOT between j and me: k absent OR k ends after me starts OR k starts before j ends
-            k_absent = Node.build(TypeNode.EQ, k_pres, 0) if third.optional else None
-            k_after_me = Node.build(TypeNode.LT, my_start, k_start)  # k starts after me
-            k_before_j = Node.build(TypeNode.LT, k_end, other_end)  # k ends before j ends
-            
-            if k_absent:
-                no_k_between = Node.build(TypeNode.OR, k_absent, k_after_me, k_before_j)
-            else:
-                no_k_between = Node.build(TypeNode.OR, k_after_me, k_before_j)
-            
-            no_one_between_conditions.append(no_k_between)
-        
-        # j_is_prev = j_present AND j_before_me AND no_one_between
-        if other.optional:
-            j_present_cond = Node.build(TypeNode.EQ, other_pres, 1)
-            base_cond = Node.build(TypeNode.AND, j_present_cond, j_before_me)
-        else:
-            base_cond = j_before_me
-        
-        if no_one_between_conditions:
-            all_no_between = Node.build(TypeNode.AND, *no_one_between_conditions) if len(no_one_between_conditions) > 1 else no_one_between_conditions[0]
-            j_is_prev = Node.build(TypeNode.AND, base_cond, all_no_between)
-        else:
-            j_is_prev = base_cond
-        
-        # Add interval's presence to condition
-        if interval.optional:
-            my_present = Node.build(TypeNode.EQ, my_pres, 1)
-            full_cond = Node.build(TypeNode.AND, my_present, j_is_prev)
-        else:
-            full_cond = j_is_prev
-        
-        # IF full_cond THEN result_var == other_type
-        result_eq_type = Node.build(TypeNode.EQ, result_var, other_type)
+        pos_j = positions[j]
+
+        # prev_idx = j => pos_j = pos_i - 1
         satisfy(
-            Node.build(TypeNode.OR, Node.build(TypeNode.NOT, full_cond), result_eq_type)
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, prev_idx, j),
+                Node.build(TypeNode.EQ, pos_j, pos_i_minus_1),
+            )
         )
-    
-    # Constraint: If interval is present and is first (no one before), result = first_value
-    not_first_conditions = []
-    for j, other in enumerate(intervals):
-        if j == idx:
-            continue
-        other_pres = presence_var(other)
-        other_start = start_var(other)
-        other_length = length_value(other)
-        if isinstance(other_length, int):
-            other_end = Node.build(TypeNode.ADD, other_start, other_length) if other_length > 0 else other_start
-        else:
-            other_end = Node.build(TypeNode.ADD, other_start, other_length)
-        
-        # j before me: other_end <= my_start AND j present
-        j_before = Node.build(TypeNode.LE, other_end, my_start)
-        if other.optional:
-            j_present_and_before = Node.build(TypeNode.AND, Node.build(TypeNode.EQ, other_pres, 1), j_before)
-        else:
-            j_present_and_before = j_before
-        not_first_conditions.append(j_present_and_before)
-    
-    if not_first_conditions:
-        someone_before = Node.build(TypeNode.OR, *not_first_conditions) if len(not_first_conditions) > 1 else not_first_conditions[0]
-        no_one_before = Node.build(TypeNode.NOT, someone_before)
-        
+
+        # If i is present and pos_j = pos_i - 1, then prev_idx = j
         if interval.optional:
-            my_present = Node.build(TypeNode.EQ, my_pres, 1)
-            present_and_first = Node.build(TypeNode.AND, my_present, no_one_before)
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.EQ, pres_i, 0),
+                    Node.build(TypeNode.NE, pos_j, pos_i_minus_1),
+                    Node.build(TypeNode.EQ, prev_idx, j),
+                )
+            )
         else:
-            present_and_first = no_one_before
-        
-        result_eq_first = Node.build(TypeNode.EQ, result_var, first_value)
-        satisfy(
-            Node.build(TypeNode.OR, Node.build(TypeNode.NOT, present_and_first), result_eq_first)
-        )
-    
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.NE, pos_j, pos_i_minus_1),
+                    Node.build(TypeNode.EQ, prev_idx, j),
+                )
+            )
+
     return result_var
