@@ -80,7 +80,7 @@ These functions access properties of neighboring intervals in a sequence.
 | `end_of_next(seq, iv, last_val, absent_val)` | End time of next interval |
 | `size_of_next(seq, iv, last_val, absent_val)` | Size of next interval |
 | `length_of_next(seq, iv, last_val, absent_val)` | Length of next interval |
-| `type_of_next(seq, iv, last_val, absent_val)` | Type of next interval |
+| `next_arg(seq, iv, last_val, absent_val)` | ID of next interval |
 
 ### Previous Accessors
 
@@ -90,7 +90,7 @@ These functions access properties of neighboring intervals in a sequence.
 | `end_of_prev(seq, iv, first_val, absent_val)` | End time of previous interval |
 | `size_of_prev(seq, iv, first_val, absent_val)` | Size of previous interval |
 | `length_of_prev(seq, iv, first_val, absent_val)` | Length of previous interval |
-| `type_of_prev(seq, iv, first_val, absent_val)` | Type of previous interval |
+| `prev_arg(seq, iv, first_val, absent_val)` | ID of previous interval |
 
 ## Element Expressions
 
@@ -178,23 +178,24 @@ earliest = expr_min(*(start_of(t) for t in tasks))
 makespan = expr_max(*(end_of(t) for t in tasks))
 ```
 
-### type_of_next for Distance Objectives (VRPTW Pattern)
+### next_arg for Distance Objectives (VRPTW Pattern)
 
-The `type_of_next` function returns the type of the next interval in a sequence,
-enabling CP Optimizer-style distance objectives:
+The `next_arg` function returns the ID of the next interval in a sequence,
+enabling CP Optimizer-style distance objectives. Similar to pycsp3's `maximum_arg` pattern:
 
 ```python
 from pycsp3 import minimize, Sum
-from pycsp3_scheduling import IntervalVar, SequenceVar, type_of_next
+from pycsp3_scheduling import IntervalVar, SequenceVar
+from pycsp3_scheduling.expressions.sequence_expr import next_arg
 from pycsp3_scheduling.expressions.element import ElementMatrix
 
-# Create intervals with types
+# Create intervals with IDs (types)
 visits = [IntervalVar(size=5, optional=True, name=f"v{i}") for i in range(n)]
 route = SequenceVar(intervals=visits, types=list(range(n)), name="route")
 
 # Build cost matrix with boundary values
 M = ElementMatrix(
-    matrix=travel_costs,           # [from_type][to_type] distances
+    matrix=travel_costs,           # [from_id][to_id] distances
     last_value=depot_return_costs, # Cost when interval is last
     absent_value=0,                # No cost when interval is absent
 )
@@ -202,12 +203,12 @@ M = ElementMatrix(
 # Objective: minimize total transition costs
 distance_terms = []
 for i, visit in enumerate(visits):
-    next_type = type_of_next(
+    next_id = next_arg(
         route, visit,
         last_value=M.last_type,      # Column index for "last"
         absent_value=M.absent_type,  # Column index for "absent"
     )
-    distance_terms.append(M[i, next_type])
+    distance_terms.append(M[i, next_id])
 
 minimize(Sum(distance_terms))
 ```
@@ -244,5 +245,5 @@ print(M.get_value(0, 1))        # 10 (travel from 0 to 1)
 print(M.get_value(1, M.last_type))  # 18 (return from 1 to depot)
 
 # Use with expressions for element constraints
-cost = M[type_i, type_of_next(route, interval, M.last_type, M.absent_type)]
+cost = M[id_i, next_arg(route, interval, M.last_type, M.absent_type)]
 ```

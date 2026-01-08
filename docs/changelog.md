@@ -5,6 +5,11 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### In development 
+  - Renamed `type_of_next`/`type_of_prev` to `next_arg`/`prev_arg` (old names still work as aliases)
+  - Updated documentation for type_of_next/prev, next_arg/prev_arg
+
+
 ## [0.1.7] - 2026-01-05
   - Fixed VRPTW example notebook with distance minimization objective
   - Updated documentation for ElementMatrix and type_of_next/prev
@@ -20,10 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Properties: `last_type`, `absent_type` for column indices
   - `get_value()` method for debugging/constant access
 
-- **type_of_next / type_of_prev** now return pycsp3 variables
+- **next_arg / prev_arg** (formerly `type_of_next`/`type_of_prev`) now return pycsp3 variables
+  - Returns the ID of the next/previous interval in a sequence (similar to pycsp3's `maximum_arg`)
   - Can be used directly in `ElementMatrix` indexing
   - Enables CP Optimizer-style distance objectives:
-    `M[type_i, type_of_next(route, interval, last_value, absent_value)]`
+    `M[id_i, next_arg(route, interval, last_value, absent_value)]`
 
 - **element() and element2d()** helper functions
   - Array indexing with variable indices
@@ -35,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- VRPTW example updated to use `ElementMatrix` + `type_of_next` for distance objective
+- VRPTW example updated to use `ElementMatrix` + `next_arg` for distance objective
 - VRPTW notebooks updated with working distance minimization
 
 ## [0.1.5] - 2026-01-04

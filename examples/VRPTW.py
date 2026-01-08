@@ -1,25 +1,25 @@
 """
 Vehicle Routing Problem with Time Windows (VRPTW)
 
-Objective: Minimize total travel distance using the type_of_next pattern,
+Objective: Minimize total travel distance using the next_arg pattern,
 including depot departure via a fictive depot visit per vehicle.
 
 This example demonstrates the CP Optimizer-style distance objective:
 
     for k in vehicles:
         for i in intervals:
-            distance += M[type_i, type_of_next(route[k], visit[k][i], last, absent)]
+            distance += M[id_i, next_arg(route[k], visit[k][i], last, absent)]
 
 Where:
 - M is the transition matrix with travel distances between customers
-- type_i is the type of interval i (0=depot, 1..n=customers)
-- type_of_next returns the type of the next interval in the sequence
+- id_i is the ID of interval i (0=depot, 1..n=customers)
+- next_arg returns the ID of the next interval in the sequence
 - last_value = distance back to depot (when interval is last in route)
 - absent_value = 0 (no cost if interval is not scheduled)
 
 Key functions used:
 - ElementMatrix: 2D matrix indexed by expressions (like CP Optimizer's IloNumArray2)
-- type_of_next: Returns type of next interval in sequence (pycsp3 variable)
+- next_arg: Returns ID of next interval in sequence (pycsp3 variable)
 - SeqNoOverlap: Ensures non-overlapping intervals with transition times
 - alternative: Assigns each customer to exactly one vehicle
 """
@@ -28,7 +28,7 @@ from pycsp3 import *
 from pycsp3_scheduling import *
 from pycsp3_scheduling.variables.interval import clear_interval_registry
 from pycsp3_scheduling.expressions.element import ElementMatrix
-from pycsp3_scheduling.expressions.sequence_expr import type_of_next
+from pycsp3_scheduling.expressions.sequence_expr import next_arg
 
 
 # =============================================================================
@@ -170,22 +170,22 @@ print(f"Capacity constraints: each route demand <= {vehicle_capacity}")
 
 
 # =============================================================================
-# Objective: Minimize total travel distance using type_of_next pattern
+# Objective: Minimize total travel distance using next_arg pattern
 # =============================================================================
-# This is the CP Optimizer-style objective using ElementMatrix and type_of_next.
+# This is the CP Optimizer-style objective using ElementMatrix and next_arg.
 #
 # Matrix structure:
-#   M[type_i, type_j] = distance from type_i to type_j (type 0 is depot)
-#   M[type_i, last_type] = distance from type_i back to depot
-#   M[type_i, absent_type] = 0 (no cost if interval is absent)
+#   M[id_i, id_j] = distance from id_i to id_j (id 0 is depot)
+#   M[id_i, last_id] = distance from id_i back to depot
+#   M[id_i, absent_id] = 0 (no cost if interval is absent)
 #
 # For each vehicle route and each interval:
-#   cost += M[type_i, type_of_next(route, interval, last_value, absent_value)]
+#   cost += M[id_i, next_arg(route, interval, last_value, absent_value)]
 
-# Build the transition cost matrix (includes depot as type 0)
+# Build the transition cost matrix (includes depot as id 0)
 cost_matrix = [row[:] for row in travel]
 
-# Distance back to depot for each type (when interval is last)
+# Distance back to depot for each id (when interval is last)
 # Row 0 (depot) has 0 cost when no customer is visited
 depot_distances = [0] + [travel[i][0] for i in range(1, n_customers + 1)]
 
@@ -196,14 +196,14 @@ M = ElementMatrix(
     absent_value=0,              # No cost if interval not scheduled
 )
 
-print(f"\nDistance objective using type_of_next pattern:")
-print(f"  Matrix size: {M.n_rows}x{M.n_cols} (+ last_type={M.last_type}, absent_type={M.absent_type})")
+print(f"\nDistance objective using next_arg pattern:")
+print(f"  Matrix size: {M.n_rows}x{M.n_cols} (+ last_id={M.last_type}, absent_id={M.absent_type})")
 print(f"  Example: Depot->C1 = {M.get_value(0, 1)}, C2->depot = {M.get_value(2, M.last_type)}")
 
-# Build objective: sum of M[type_i, type_of_next(route, interval)]
+# Build objective: sum of M[id_i, next_arg(route, interval)]
 distance_terms = []
 for v in range(n_vehicles):
-    depot_next = type_of_next(
+    depot_next = next_arg(
         routes[v],
         depots[v],
         last_value=M.last_type,
@@ -211,15 +211,15 @@ for v in range(n_vehicles):
     )
     distance_terms.append(M[0, depot_next])
     for c in range(n_customers):
-        type_i = c + 1  # Type of this interval (1-indexed customer)
-        next_type = type_of_next(
+        id_i = c + 1  # ID of this interval (1-indexed customer)
+        next_id = next_arg(
             routes[v],
             visits[v][c],
             last_value=M.last_type,    # Use matrix's last column index
             absent_value=M.absent_type,  # Use matrix's absent column index
         )
-        # M[type_i, next_type] gives the transition cost
-        distance_terms.append(M[type_i, next_type])
+        # M[id_i, next_id] gives the transition cost
+        distance_terms.append(M[id_i, next_id])
 
 # Note: This objective covers depot departure, customer-to-customer,
 # and return-to-depot distances.

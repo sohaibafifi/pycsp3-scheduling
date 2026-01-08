@@ -5,10 +5,11 @@ These functions return expressions that access properties of neighboring
 intervals in a sequence relative to a given interval.
 
 The key functions for building transition-based objectives are:
-- type_of_next(sequence, interval, last_value, absent_value)
-- type_of_prev(sequence, interval, first_value, absent_value)
+- next_arg(sequence, interval, last_value, absent_value)
+- prev_arg(sequence, interval, first_value, absent_value)
 
 These return pycsp3 variables that can be used to index into transition matrices.
+Similar to pycsp3's maximum_arg/minimum_arg pattern.
 """
 
 from __future__ import annotations
@@ -22,17 +23,17 @@ if TYPE_CHECKING:
     from pycsp3_scheduling.variables.sequence import SequenceVar
 
 
-# Cache for type_of_next/type_of_prev variables to avoid duplication
-_type_of_next_vars: dict[tuple[int, int], Any] = {}
-_type_of_prev_vars: dict[tuple[int, int], Any] = {}
+# Cache for next_arg/prev_arg variables to avoid duplication
+_next_arg_vars: dict[tuple[int, int], Any] = {}
+_prev_arg_vars: dict[tuple[int, int], Any] = {}
 _sequence_position_vars: dict[int, list[Any]] = {}
 _sequence_present_count_vars: dict[int, Any] = {}
 
 
 def clear_sequence_expr_cache() -> None:
     """Clear cached sequence expression variables."""
-    _type_of_next_vars.clear()
-    _type_of_prev_vars.clear()
+    _next_arg_vars.clear()
+    _prev_arg_vars.clear()
     _sequence_position_vars.clear()
     _sequence_present_count_vars.clear()
 
@@ -320,34 +321,33 @@ def length_of_next(
     )
 
 
-def type_of_next(
+def next_arg(
     sequence,
     interval: IntervalVar,
     last_value: int = 0,
     absent_value: int = 0,
 ) -> Any:
     """
-    Return a variable representing the type of the next interval in the sequence.
+    Return a variable representing the ID of the next interval in the sequence.
 
-    This is the key function for building transition-based objectives like
-    CP Optimizer's IloTypeOfNext pattern. The returned variable can be used
-    to index into a TransitionMatrix.
+    Similar to pycsp3's maximum_arg pattern, this returns the argument (ID)
+    of the successor interval. Used for building transition-based objectives.
 
-    Requires a SequenceVar with types defined.
+    Requires a SequenceVar with types (IDs) defined.
 
     Semantics:
-    - If the interval is present and not last: returns the type of the next interval
+    - If the interval is present and not last: returns the ID of the next interval
     - If the interval is present and last: returns last_value
     - If the interval is absent: returns absent_value
 
     Args:
-        sequence: SequenceVar with types defined.
+        sequence: SequenceVar with types (IDs) defined.
         interval: The reference interval.
         last_value: Value when interval is last (default: 0).
         absent_value: Value when interval is absent (default: 0).
 
     Returns:
-        A pycsp3 variable representing the type of the next interval.
+        A pycsp3 variable representing the ID of the next interval.
         This variable can be used to index into arrays/matrices.
 
     Raises:
@@ -355,36 +355,40 @@ def type_of_next(
 
     Example:
         >>> seq = SequenceVar(intervals=[t1, t2, t3], types=[0, 1, 2], name="machine")
-        >>> next_type = type_of_next(seq, t1, last_value=3, absent_value=4)
-        >>> # If t2 follows t1 in the schedule, next_type == 1
-        >>> # If t1 is last, next_type == 3
-        >>> # If t1 is absent, next_type == 4
-        >>> 
-        >>> # Use with TransitionMatrix for distance objective:
-        >>> M = TransitionMatrix(travel_times, last_value=depot_return)
-        >>> cost = M[type_of_interval, next_type]
+        >>> next_id = next_arg(seq, t1, last_value=3, absent_value=4)
+        >>> # If t2 follows t1 in the schedule, next_id == 1
+        >>> # If t1 is last, next_id == 3
+        >>> # If t1 is absent, next_id == 4
+        >>>
+        >>> # Use with ElementMatrix for distance objective:
+        >>> M = ElementMatrix(travel_times, last_value=depot_return)
+        >>> cost = M[current_id, next_id]
     """
     from pycsp3_scheduling.variables.sequence import SequenceVar
 
     if not isinstance(sequence, SequenceVar):
-        raise TypeError("type_of_next requires a SequenceVar")
+        raise TypeError("next_arg requires a SequenceVar")
     if not sequence.has_types:
-        raise ValueError("type_of_next requires sequence with types defined")
+        raise ValueError("next_arg requires sequence with types defined")
 
     intervals, idx = _validate_sequence_and_interval(sequence, interval)
-    
+
     # Check cache
     cache_key = (sequence._id, interval._id)
-    if cache_key in _type_of_next_vars:
-        return _type_of_next_vars[cache_key]
-    
-    # Build the type_of_next variable and constraints
-    var = _build_type_of_next_var(sequence, interval, idx, last_value, absent_value)
-    _type_of_next_vars[cache_key] = var
+    if cache_key in _next_arg_vars:
+        return _next_arg_vars[cache_key]
+
+    # Build the next_arg variable and constraints
+    var = _build_next_arg_var(sequence, interval, idx, last_value, absent_value)
+    _next_arg_vars[cache_key] = var
     return var
 
 
-def _build_type_of_next_var(
+# Backward compatibility alias
+type_of_next = next_arg
+
+
+def _build_next_arg_var(
     sequence: SequenceVar,
     interval: IntervalVar,
     idx: int,
@@ -392,18 +396,18 @@ def _build_type_of_next_var(
     absent_value: int,
 ) -> Any:
     """
-    Build a pycsp3 variable for type_of_next with appropriate constraints.
+    Build a pycsp3 variable for next_arg with appropriate constraints.
 
     Successor-variable encoding using position variables:
     - Each interval has a position (0 if absent, otherwise 1..m).
     - The successor index is the interval at position +1, or a last/absent marker.
-    - Use an element constraint to map successor index to type values.
+    - Use an element constraint to map successor index to ID values.
     """
     try:
         from pycsp3 import Var, satisfy
         from pycsp3.classes.nodes import Node, TypeNode
     except ImportError:
-        raise ImportError("pycsp3 is required for type_of_next")
+        raise ImportError("pycsp3 is required for next_arg")
 
     from pycsp3_scheduling.constraints._pycsp3 import (
         presence_var,
@@ -655,30 +659,33 @@ def length_of_prev(
     )
 
 
-def type_of_prev(
+def prev_arg(
     sequence,
     interval: IntervalVar,
     first_value: int = 0,
     absent_value: int = 0,
 ) -> Any:
     """
-    Return a variable representing the type of the previous interval in the sequence.
+    Return a variable representing the ID of the previous interval in the sequence.
 
-    Requires a SequenceVar with types defined.
+    Similar to pycsp3's maximum_arg pattern, this returns the argument (ID)
+    of the predecessor interval. Used for building transition-based objectives.
+
+    Requires a SequenceVar with types (IDs) defined.
 
     Semantics:
-    - If the interval is present and not first: returns the type of the previous interval
+    - If the interval is present and not first: returns the ID of the previous interval
     - If the interval is present and first: returns first_value
     - If the interval is absent: returns absent_value
 
     Args:
-        sequence: SequenceVar with types defined.
+        sequence: SequenceVar with types (IDs) defined.
         interval: The reference interval.
         first_value: Value when interval is first (default: 0).
         absent_value: Value when interval is absent (default: 0).
 
     Returns:
-        A pycsp3 variable representing the type of the previous interval.
+        A pycsp3 variable representing the ID of the previous interval.
 
     Raises:
         TypeError: If sequence is not a SequenceVar or has no types.
@@ -686,24 +693,28 @@ def type_of_prev(
     from pycsp3_scheduling.variables.sequence import SequenceVar
 
     if not isinstance(sequence, SequenceVar):
-        raise TypeError("type_of_prev requires a SequenceVar")
+        raise TypeError("prev_arg requires a SequenceVar")
     if not sequence.has_types:
-        raise ValueError("type_of_prev requires sequence with types defined")
+        raise ValueError("prev_arg requires sequence with types defined")
 
     intervals, idx = _validate_sequence_and_interval(sequence, interval)
-    
+
     # Check cache
     cache_key = (sequence._id, interval._id)
-    if cache_key in _type_of_prev_vars:
-        return _type_of_prev_vars[cache_key]
-    
-    # Build the type_of_prev variable and constraints
-    var = _build_type_of_prev_var(sequence, interval, idx, first_value, absent_value)
-    _type_of_prev_vars[cache_key] = var
+    if cache_key in _prev_arg_vars:
+        return _prev_arg_vars[cache_key]
+
+    # Build the prev_arg variable and constraints
+    var = _build_prev_arg_var(sequence, interval, idx, first_value, absent_value)
+    _prev_arg_vars[cache_key] = var
     return var
 
 
-def _build_type_of_prev_var(
+# Backward compatibility alias
+type_of_prev = prev_arg
+
+
+def _build_prev_arg_var(
     sequence: SequenceVar,
     interval: IntervalVar,
     idx: int,
@@ -711,13 +722,13 @@ def _build_type_of_prev_var(
     absent_value: int,
 ) -> Any:
     """
-    Build a pycsp3 variable for type_of_prev with appropriate constraints.
+    Build a pycsp3 variable for prev_arg with appropriate constraints.
     """
     try:
         from pycsp3 import Var, satisfy
         from pycsp3.classes.nodes import Node, TypeNode
     except ImportError:
-        raise ImportError("pycsp3 is required for type_of_prev")
+        raise ImportError("pycsp3 is required for prev_arg")
     
     from pycsp3_scheduling.constraints._pycsp3 import (
         presence_var,

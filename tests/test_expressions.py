@@ -17,8 +17,8 @@ from pycsp3_scheduling.expressions import (
     expr_max,
 )
 from pycsp3_scheduling.expressions.sequence_expr import (
-    type_of_next,
-    type_of_prev,
+    next_arg,
+    prev_arg,
     clear_sequence_expr_cache,
 )
 
@@ -352,31 +352,31 @@ class TestExpressionUtilities:
         assert "<=" in repr_str
 
 
-class TestTypeOfNext:
-    """Tests for type_of_next expression validation (unit tests only).
+class TestNextArg:
+    """Tests for next_arg expression validation (unit tests only).
 
-    Full solution validation tests are in tests/validate_type_of_next.py
+    Full solution validation tests are in tests/validate_sequence_arg.py
     which runs each test in a subprocess to avoid pycsp3 state issues.
     """
 
-    def test_type_of_next_requires_sequence_var(self):
-        """Test that type_of_next requires a SequenceVar."""
+    def test_next_arg_requires_sequence_var(self):
+        """Test that next_arg requires a SequenceVar."""
         t1 = IntervalVar(size=5, name="t1")
         t2 = IntervalVar(size=5, name="t2")
 
         with pytest.raises(TypeError, match="requires a SequenceVar"):
-            type_of_next([t1, t2], t1)
+            next_arg([t1, t2], t1)
 
-    def test_type_of_next_requires_types(self):
-        """Test that type_of_next requires sequence with types."""
+    def test_next_arg_requires_types(self):
+        """Test that next_arg requires sequence with types."""
         t1 = IntervalVar(size=5, name="t1")
         t2 = IntervalVar(size=5, name="t2")
         seq = SequenceVar(intervals=[t1, t2], name="seq")  # No types
 
         with pytest.raises(ValueError, match="requires sequence with types"):
-            type_of_next(seq, t1)
+            next_arg(seq, t1)
 
-    def test_type_of_next_interval_not_in_sequence(self):
+    def test_next_arg_interval_not_in_sequence(self):
         """Test error when interval is not in sequence."""
         t1 = IntervalVar(size=5, name="t1")
         t2 = IntervalVar(size=5, name="t2")
@@ -384,16 +384,16 @@ class TestTypeOfNext:
         seq = SequenceVar(intervals=[t1, t2], types=[0, 1], name="seq")
 
         with pytest.raises(ValueError, match="not in the sequence"):
-            type_of_next(seq, t3)
+            next_arg(seq, t3)
 
 
-class TestTypeOfPrev:
-    """Tests for type_of_prev expression validation (unit tests only)."""
+class TestPrevArg:
+    """Tests for prev_arg expression validation (unit tests only)."""
 
-    def test_type_of_prev_requires_sequence_var(self):
-        """Test that type_of_prev requires a SequenceVar."""
+    def test_prev_arg_requires_sequence_var(self):
+        """Test that prev_arg requires a SequenceVar."""
         t1 = IntervalVar(size=5, name="t1")
         t2 = IntervalVar(size=5, name="t2")
 
         with pytest.raises(TypeError, match="requires a SequenceVar"):
-            type_of_prev([t1, t2], t1)
+            prev_arg([t1, t2], t1)
