@@ -220,21 +220,25 @@ def SequenceVarArray(
 
 
 # Registry for all sequence variables (for model compilation)
-_sequence_registry: list[SequenceVar] = []
+# Uses set for O(1) membership check, list for insertion order
+_sequence_registry_set: set[SequenceVar] = set()
+_sequence_registry_ordered: list[SequenceVar] = []
 
 
 def register_sequence(sequence: SequenceVar) -> None:
     """Register a sequence variable for model compilation."""
-    if sequence not in _sequence_registry:
-        _sequence_registry.append(sequence)
+    if sequence not in _sequence_registry_set:  # O(1) lookup
+        _sequence_registry_set.add(sequence)
+        _sequence_registry_ordered.append(sequence)
 
 
 def get_registered_sequences() -> list[SequenceVar]:
-    """Get all registered sequence variables."""
-    return list(_sequence_registry)
+    """Get all registered sequence variables in registration order."""
+    return list(_sequence_registry_ordered)
 
 
 def clear_sequence_registry() -> None:
     """Clear the sequence variable registry."""
-    _sequence_registry.clear()
+    _sequence_registry_set.clear()
+    _sequence_registry_ordered.clear()
     SequenceVar._id_counter = 0

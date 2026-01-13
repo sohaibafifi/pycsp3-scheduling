@@ -426,21 +426,25 @@ def IntervalVarDict(
 
 
 # Registry for all interval variables (for model compilation)
-_interval_registry: list[IntervalVar] = []
+# Uses set for O(1) membership check, list for insertion order
+_interval_registry_set: set[IntervalVar] = set()
+_interval_registry_ordered: list[IntervalVar] = []
 
 
 def register_interval(interval: IntervalVar) -> None:
     """Register an interval variable for model compilation."""
-    if interval not in _interval_registry:
-        _interval_registry.append(interval)
+    if interval not in _interval_registry_set:  # O(1) lookup
+        _interval_registry_set.add(interval)
+        _interval_registry_ordered.append(interval)
 
 
 def get_registered_intervals() -> list[IntervalVar]:
-    """Get all registered interval variables."""
-    return list(_interval_registry)
+    """Get all registered interval variables in registration order."""
+    return list(_interval_registry_ordered)
 
 
 def clear_interval_registry() -> None:
     """Clear the interval variable registry."""
-    _interval_registry.clear()
+    _interval_registry_set.clear()
+    _interval_registry_ordered.clear()
     IntervalVar._id_counter = 0
