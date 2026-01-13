@@ -66,7 +66,12 @@ def _validate_sequence_and_interval(sequence, interval: IntervalVar) -> tuple[li
 
 
 def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
-    """Create (or reuse) position variables and ordering constraints for a sequence."""
+    """
+    Create (or reuse) position variables and ordering constraints for a sequence.
+
+    This function creates position variables that track the order of intervals
+    in a sequence. For optional intervals, position 0 indicates absence.
+    """
     if sequence._id in _sequence_position_vars:
         return (
             _sequence_position_vars[sequence._id],
@@ -74,7 +79,7 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
         )
 
     try:
-        from pycsp3 import Var, satisfy
+        from pycsp3 import AllDifferent, Var, satisfy
         from pycsp3.classes.nodes import Node, TypeNode
     except ImportError:
         raise ImportError("pycsp3 is required for sequence position variables")
@@ -88,19 +93,34 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
     intervals = sequence.intervals
     n = len(intervals)
 
+    if n == 0:
+        # Empty sequence - no constraints needed
+        count_var = Var(dom={0}, id=f"seqcount{sequence._id}")
+        satisfy(count_var == 0)
+        _sequence_position_vars[sequence._id] = []
+        _sequence_present_count_vars[sequence._id] = count_var
+        return [], count_var
+
     positions: list[Any] = []
     presences: list[Any] = []
+    has_optional = False
 
     for interval in intervals:
         pres = presence_var(interval) if interval.optional else 1
         presences.append(pres)
 
-        pos_dom = range(0, n + 1) if interval.optional else range(1, n + 1)
+        if interval.optional:
+            has_optional = True
+            pos_dom = range(0, n + 1)  # 0 = absent
+        else:
+            pos_dom = range(1, n + 1)
+
         pos_var = Var(dom=pos_dom, id=f"seqpos{sequence._id}_{interval._id}")
         positions.append(pos_var)
 
         if interval.optional:
-            # Presence <-> position 0
+            # Presence <-> position != 0 (bidirectional channeling)
+            # present=1 => pos != 0, and pos != 0 => present=1
             satisfy(
                 Node.build(
                     TypeNode.OR,
@@ -118,14 +138,11 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
 
     # Count of present intervals
     count_var = Var(dom=range(0, n + 1), id=f"seqcount{sequence._id}")
-    if presences:
-        if len(presences) == 1:
-            sum_presences = presences[0]
-        else:
-            sum_presences = Node.build(TypeNode.ADD, *presences)
-        satisfy(Node.build(TypeNode.EQ, count_var, sum_presences))
+    if len(presences) == 1:
+        sum_presences = presences[0]
     else:
-        satisfy(Node.build(TypeNode.EQ, count_var, 0))
+        sum_presences = Node.build(TypeNode.ADD, *presences)
+    satisfy(Node.build(TypeNode.EQ, count_var, sum_presences))
 
     # Present intervals must occupy positions 1..count_var (no gaps)
     for interval, pos_var, pres in zip(intervals, positions, presences):
@@ -141,24 +158,19 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
             satisfy(Node.build(TypeNode.LE, pos_var, count_var))
 
     # All-different positions for present intervals
-    for i in range(n):
-        for j in range(i + 1, n):
-            pos_i = positions[i]
-            pos_j = positions[j]
-            interval_i = intervals[i]
-            interval_j = intervals[j]
-
-            if interval_i.optional or interval_j.optional:
-                disjuncts = [Node.build(TypeNode.NE, pos_i, pos_j)]
-                if interval_i.optional:
-                    disjuncts.insert(0, Node.build(TypeNode.EQ, presences[i], 0))
-                if interval_j.optional:
-                    disjuncts.insert(0, Node.build(TypeNode.EQ, presences[j], 0))
-                satisfy(Node.build(TypeNode.OR, *disjuncts))
-            else:
-                satisfy(Node.build(TypeNode.NE, pos_i, pos_j))
+    # Use native AllDifferent constraint instead of O(n²) pairwise decomposition
+    # excepting=0 allows multiple intervals to have position 0 (absent)
+    if has_optional:
+        # With optional intervals, use AllDifferent with excepting=0
+        # This allows multiple absent intervals (position=0) while ensuring
+        # all present intervals have unique positions
+        satisfy(AllDifferent(positions, excepting=0))
+    else:
+        # All mandatory: simple AllDifferent
+        satisfy(AllDifferent(positions))
 
     # Link temporal order to positions
+    # Pre-compute start and end expressions once
     starts = [start_var(interval) for interval in intervals]
     ends: list[Any] = []
     for interval, start in zip(intervals, starts):
@@ -169,6 +181,8 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
             end = Node.build(TypeNode.ADD, start, length)
         ends.append(end)
 
+    # Temporal ordering constraint: if i ends before j starts, then pos[i] < pos[j]
+    # Formulated as: (start[j] < end[i]) OR (pos[i] < pos[j]) OR absent conditions
     for i in range(n):
         for j in range(n):
             if i == j:
