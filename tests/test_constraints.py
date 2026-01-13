@@ -650,10 +650,10 @@ class TestIntensityDiscretization:
         steps = [(0, 100)]
 
         # Need 1000 work units at 100 intensity/time -> 10 time units
-        assert _find_length_for_work(steps, 0, 1000, 100) == 10
+        assert _find_length_for_work(0, 1000, 100, steps=steps) == 10
 
         # Starting at t=5 doesn't change anything (constant intensity)
-        assert _find_length_for_work(steps, 5, 1000, 100) == 10
+        assert _find_length_for_work(5, 1000, 100, steps=steps) == 10
 
     def test_find_length_for_work_variable_intensity(self):
         """Test finding length when intensity varies."""
@@ -664,17 +664,17 @@ class TestIntensityDiscretization:
 
         # Starting at t=0, need 1000 work units:
         # At 100 intensity, 10 time units gives exactly 1000
-        assert _find_length_for_work(steps, 0, 1000, 100) == 10
+        assert _find_length_for_work(0, 1000, 100, steps=steps) == 10
 
         # Starting at t=5, need 1000 work units:
         # [5, 10): 5 * 100 = 500
         # Need 500 more at 50 intensity -> 10 more time units
         # Total length: 5 + 10 = 15
-        assert _find_length_for_work(steps, 5, 1000, 100) == 15
+        assert _find_length_for_work(5, 1000, 100, steps=steps) == 15
 
         # Starting at t=10 (in 50% zone), need 1000 work units:
         # At 50 intensity, need 20 time units
-        assert _find_length_for_work(steps, 10, 1000, 100) == 20
+        assert _find_length_for_work(10, 1000, 100, steps=steps) == 20
 
     def test_find_length_for_work_zero_intensity(self):
         """Test that zero intensity returns None (can't complete work)."""
@@ -684,7 +684,7 @@ class TestIntensityDiscretization:
         steps = []
 
         # Can't complete any work with 0 intensity
-        assert _find_length_for_work(steps, 0, 100, 1000) is None
+        assert _find_length_for_work(0, 100, 1000, steps=steps) is None
 
     def test_find_length_for_work_exceeds_max(self):
         """Test when work can't be completed within max_length."""
@@ -695,7 +695,7 @@ class TestIntensityDiscretization:
 
         # Need 1000 work at intensity 10 -> would need 100 time units
         # But max_length is 50
-        assert _find_length_for_work(steps, 0, 1000, 50) is None
+        assert _find_length_for_work(0, 1000, 50, steps=steps) is None
 
     def test_compute_intensity_table_fixed_size(self):
         """Test table computation for fixed-size interval."""

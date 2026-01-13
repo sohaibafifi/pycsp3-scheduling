@@ -12,6 +12,7 @@ Key concepts:
 
 from __future__ import annotations
 
+import bisect
 from typing import TYPE_CHECKING, Any
 
 from pycsp3_scheduling.variables.interval import (
@@ -56,6 +57,35 @@ _intensity_constraints_posted: set[IntervalVar] = set()
 # =============================================================================
 
 
+def _intensity_at_binary(step_positions: list[int], step_values: list[int], t: int) -> int:
+    """
+    Evaluate the stepwise intensity function at time t using binary search.
+
+    Optimized version that uses pre-extracted positions and values arrays
+    with binary search for O(log n) lookup instead of O(n) linear scan.
+
+    Args:
+        step_positions: Sorted list of step x-coordinates.
+        step_values: Corresponding intensity values at each position.
+        t: The time point to evaluate.
+
+    Returns:
+        The intensity value at time t.
+    """
+    if not step_positions:
+        return 0
+
+    # Binary search: find rightmost position <= t
+    # bisect_right gives insertion point, so index - 1 is the applicable step
+    idx = bisect.bisect_right(step_positions, t) - 1
+
+    if idx < 0:
+        # t is before the first step
+        return 0
+
+    return step_values[idx]
+
+
 def _intensity_at(steps: list[Step], t: int) -> int:
     """
     Evaluate the stepwise intensity function at time t.
@@ -78,19 +108,17 @@ def _intensity_at(steps: list[Step], t: int) -> int:
     Returns:
         The intensity value at time t.
     """
-    # Default intensity is 0 before the first step
-    result = 0
+    if not steps:
+        return 0
 
-    # Walk through steps to find the applicable value
-    # Each step sets the value from its x position onwards
-    for x, value in steps:
-        if t >= x:
-            result = value
-        else:
-            # Steps are sorted, so we can stop once t < x
-            break
+    # Use binary search for O(log n) lookup
+    positions = [x for x, _ in steps]
+    idx = bisect.bisect_right(positions, t) - 1
 
-    return result
+    if idx < 0:
+        return 0
+
+    return steps[idx][1]
 
 
 def _integrate_intensity(steps: list[Step], start: int, end: int) -> int:
@@ -119,16 +147,23 @@ def _integrate_intensity(steps: list[Step], start: int, end: int) -> int:
     if end <= start:
         return 0
 
-    # Build a list of "change points" where intensity changes
-    # Include start and end to properly bound the integration
-    change_points = [start]
-    for x, _ in steps:
-        if start < x < end:
-            change_points.append(x)
-    change_points.append(end)
+    if not steps:
+        return 0
 
-    # Remove duplicates and sort
-    change_points = sorted(set(change_points))
+    # Pre-extract positions and values for efficient binary search
+    step_positions = [x for x, _ in steps]
+    step_values = [v for _, v in steps]
+
+    # Use binary search to find relevant change points in range [start, end)
+    # Find first step position > start
+    left_idx = bisect.bisect_right(step_positions, start)
+    # Find first step position >= end
+    right_idx = bisect.bisect_left(step_positions, end)
+
+    # Build change points: start, relevant step positions, end
+    change_points = [start]
+    change_points.extend(step_positions[left_idx:right_idx])
+    change_points.append(end)
 
     # Integrate segment by segment
     # Between change points, intensity is constant
@@ -137,7 +172,7 @@ def _integrate_intensity(steps: list[Step], start: int, end: int) -> int:
         seg_start = change_points[i]
         seg_end = change_points[i + 1]
         # Intensity is constant in this segment, evaluate at segment start
-        intensity = _intensity_at(steps, seg_start)
+        intensity = _intensity_at_binary(step_positions, step_values, seg_start)
         # Add contribution: intensity * segment_length
         total += intensity * (seg_end - seg_start)
 
@@ -145,10 +180,13 @@ def _integrate_intensity(steps: list[Step], start: int, end: int) -> int:
 
 
 def _find_length_for_work(
-    steps: list[Step],
     start: int,
     target_work: int,
     max_length: int,
+    *,
+    steps: list[Step] | None = None,
+    step_positions: list[int] | None = None,
+    step_values: list[int] | None = None,
 ) -> int | None:
     """
     Find the length needed to complete target_work starting at time start.
@@ -162,13 +200,18 @@ def _find_length_for_work(
     Algorithm:
         We incrementally extend the interval until we accumulate enough work.
         For efficiency, we jump between step boundaries rather than iterating
-        one time unit at a time.
+        one time unit at a time. Uses binary search and index-based iteration
+        for O(log n) lookups and O(1) step advancement.
 
     Args:
-        steps: The stepwise intensity function.
         start: The start time of the interval.
         target_work: The work to complete (size * granularity).
         max_length: Maximum allowed length (to bound the search).
+        steps: The stepwise intensity function as list of (x, value) tuples.
+               Either steps OR (step_positions, step_values) must be provided.
+        step_positions: Pre-extracted sorted list of step x-coordinates.
+                        For better performance when calling repeatedly.
+        step_values: Pre-extracted list of intensity values at each position.
 
     Returns:
         The length needed, or None if target_work cannot be achieved
@@ -177,24 +220,36 @@ def _find_length_for_work(
     if target_work <= 0:
         return 0
 
-    # Build list of step boundaries after start
-    future_steps = [(x, val) for x, val in steps if x > start]
-    future_steps.sort()
+    # Extract positions and values if not provided
+    if step_positions is None or step_values is None:
+        if steps is None or not steps:
+            # No intensity steps means intensity is 0 everywhere
+            return None
+        step_positions = [x for x, _ in steps]
+        step_values = [v for _, v in steps]
+
+    if not step_positions:
+        return None
+
+    end_limit = start + max_length
+
+    # Use binary search to find first step position > start
+    step_idx = bisect.bisect_right(step_positions, start)
+    num_steps = len(step_positions)
 
     accumulated_work = 0
     current_pos = start
 
-    # Process segment by segment
-    while current_pos < start + max_length:
-        # Find intensity at current position
-        current_intensity = _intensity_at(steps, current_pos)
+    # Process segment by segment using index instead of list filtering
+    while current_pos < end_limit:
+        # Find intensity at current position using binary search
+        current_intensity = _intensity_at_binary(step_positions, step_values, current_pos)
 
-        # Find the next change point (either a step boundary or max_length)
-        next_boundary = start + max_length
-        for x, _ in future_steps:
-            if x > current_pos:
-                next_boundary = min(next_boundary, x)
-                break
+        # Find the next change point (either next step boundary or end_limit)
+        if step_idx < num_steps:
+            next_boundary = min(step_positions[step_idx], end_limit)
+        else:
+            next_boundary = end_limit
 
         # How much work can we do in this segment?
         segment_length = next_boundary - current_pos
@@ -213,8 +268,9 @@ def _find_length_for_work(
         accumulated_work += segment_work
         current_pos = next_boundary
 
-        # Remove processed step from future_steps
-        future_steps = [(x, val) for x, val in future_steps if x > current_pos]
+        # Advance step index instead of filtering list (O(1) vs O(n))
+        if step_idx < num_steps and step_positions[step_idx] <= current_pos:
+            step_idx += 1
 
     # Couldn't complete the work within max_length
     return None
@@ -254,10 +310,16 @@ def _compute_intensity_table(
     start_max = min(interval.start_max, horizon)
     size_min = interval.size_min
     size_max = interval.size_max
+    length_min = interval.length_min
     length_max = interval.length_max
 
     # Check if size is fixed (common case, more efficient)
     size_is_fixed = size_min == size_max
+
+    # Pre-extract step positions and values ONCE for all iterations
+    # This avoids repeated list comprehensions in _find_length_for_work
+    step_positions = [x for x, _ in steps]
+    step_values = [v for _, v in steps]
 
     table: list[tuple[int, ...]] = []
 
@@ -267,10 +329,14 @@ def _compute_intensity_table(
         target_work = size * granularity
 
         for start in range(start_min, start_max + 1):
-            length = _find_length_for_work(steps, start, target_work, length_max)
+            # Use pre-extracted arrays for better performance
+            length = _find_length_for_work(
+                start, target_work, length_max,
+                step_positions=step_positions, step_values=step_values
+            )
             if length is not None:
                 # Verify the length is within bounds
-                if interval.length_min <= length <= length_max:
+                if length_min <= length <= length_max:
                     # Verify end time is within horizon
                     if start + length <= horizon:
                         table.append((start, length))
@@ -279,13 +345,72 @@ def _compute_intensity_table(
         for start in range(start_min, start_max + 1):
             for size in range(size_min, size_max + 1):
                 target_work = size * granularity
-                length = _find_length_for_work(steps, start, target_work, length_max)
+                # Use pre-extracted arrays for better performance
+                length = _find_length_for_work(
+                    start, target_work, length_max,
+                    step_positions=step_positions, step_values=step_values
+                )
                 if length is not None:
-                    if interval.length_min <= length <= length_max:
+                    if length_min <= length <= length_max:
                         if start + length <= horizon:
                             table.append((start, size, length))
 
     return table
+
+
+# Memoization cache for intensity table computation
+# Key: (steps_tuple, granularity, start_min, start_max, size_min, size_max, length_min, length_max, horizon)
+_intensity_table_cache: dict[tuple, list[tuple[int, ...]]] = {}
+
+
+def _compute_intensity_table_cached(
+    interval: IntervalVar,
+    horizon: int,
+) -> list[tuple[int, int, int]] | list[tuple[int, int]] | None:
+    """
+    Cached version of _compute_intensity_table.
+
+    For intervals with the same intensity function and bounds, reuses
+    previously computed tables.
+
+    Args:
+        interval: The interval variable with intensity function.
+        horizon: The scheduling horizon (max end time).
+
+    Returns:
+        List of valid tuples, or None if no intensity function is defined.
+    """
+    if interval.intensity is None:
+        return None
+
+    # Create cache key from all relevant parameters
+    steps_tuple = tuple(interval.intensity)
+    cache_key = (
+        steps_tuple,
+        interval.granularity,
+        interval.start_min,
+        min(interval.start_max, horizon),
+        interval.size_min,
+        interval.size_max,
+        interval.length_min,
+        interval.length_max,
+        horizon,
+    )
+
+    if cache_key in _intensity_table_cache:
+        return _intensity_table_cache[cache_key]
+
+    # Compute and cache
+    result = _compute_intensity_table(interval, horizon)
+    if result is not None:
+        _intensity_table_cache[cache_key] = result
+
+    return result
+
+
+def clear_intensity_table_cache() -> None:
+    """Clear the intensity table memoization cache."""
+    _intensity_table_cache.clear()
 
 
 def _post_intensity_constraint(interval: IntervalVar, horizon: int) -> None:
@@ -573,3 +698,4 @@ def clear_pycsp3_cache() -> None:
     _length_vars.clear()
     _presence_vars.clear()
     _intensity_constraints_posted.clear()
+    _intensity_table_cache.clear()
