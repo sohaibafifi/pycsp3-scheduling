@@ -187,18 +187,19 @@ if solve() in (SAT, OPTIMUM):
 
 ```python
 from pycsp3_scheduling import visu
+from pycsp3_scheduling.interop import IntervalValue
 
 if visu.is_visu_enabled():
     visu.timeline("Job Shop Schedule", origin=0, horizon=100)
 
     # Display intervals on machines
     visu.panel("Machine 1")
-    visu.interval(0, 10, "Job1_Op1", color=0)
-    visu.interval(15, 30, "Job2_Op1", color=1)
+    visu.interval(IntervalValue(start=0, length=10, name="Job1_Op1"), color=0)
+    visu.interval(IntervalValue(start=15, length=15, name="Job2_Op1"), color=1)
 
     visu.panel("Machine 2")
-    visu.interval(10, 25, "Job1_Op2", color=0)
-    visu.interval(0, 12, "Job2_Op2", color=1)
+    visu.interval(IntervalValue(start=10, length=15, name="Job1_Op2"), color=0)
+    visu.interval(IntervalValue(start=0, length=12, name="Job2_Op2"), color=1)
 
     # Display cumulative resource usage
     visu.panel("Workers")
@@ -209,8 +210,8 @@ if visu.is_visu_enabled():
     # Display pauses/maintenance
     visu.panel("Machine 3")
     visu.pause(20, 25, "Maintenance")
-    visu.interval(0, 20, "Task", color=2)
-    visu.interval(25, 40, "Task", color=2)
+    visu.interval(IntervalValue(start=0, length=20, name="Task"), color=2)
+    visu.interval(IntervalValue(start=25, length=15, name="Task"), color=2)
 
     visu.show()
 ```
@@ -227,7 +228,7 @@ if solve() in (SAT, OPTIMUM):
         for task in seq.intervals:
             val = interval_value(task)
             if val is not None:
-                visu.interval(val.start, val.end, task.name, color=machine_id)
+                visu.interval(val, color=machine_id)
 
     visu.show()
 ```

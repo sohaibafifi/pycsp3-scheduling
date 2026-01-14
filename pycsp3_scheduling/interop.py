@@ -34,19 +34,20 @@ def presence_time(interval: IntervalVar):
 
 
 @dataclass(frozen=True)
-class IntervalValue(Mapping[str, int | bool]):
+class IntervalValue(Mapping[str, int | bool | str | None]):
     """Solved interval values with dict-like and attribute access."""
 
     start: int
     length: int
     present: bool = True
+    name: str | None = None
 
     @property
     def end(self) -> int:
         """End time of the interval."""
         return self.start + self.length
 
-    def __getitem__(self, key: str) -> int | bool:
+    def __getitem__(self, key: str) -> int | bool | str | None:
         if key == "start":
             return self.start
         if key == "end":
@@ -55,27 +56,35 @@ class IntervalValue(Mapping[str, int | bool]):
             return self.length
         if key == "present":
             return self.present
+        if key == "name":
+            return self.name
         raise KeyError(key)
 
     def __iter__(self) -> Iterator[str]:
-        yield from ("start", "end", "length", "present")
+        yield from ("start", "end", "length", "present", "name")
 
     def __len__(self) -> int:
-        return 4
+        return 5
 
     def __repr__(self) -> str:
+        if self.name is not None:
+            return (
+                f"IntervalValue(name={self.name!r}, start="
+                f"{self.start}, end={self.end}, length={self.length}, present={self.present})"
+            )
         return (
             "IntervalValue(start="
             f"{self.start}, end={self.end}, length={self.length}, present={self.present})"
         )
 
-    def to_dict(self) -> dict[str, int | bool]:
+    def to_dict(self) -> dict[str, int | bool | str | None]:
         """Return a plain dict representation."""
         return {
             "start": self.start,
             "end": self.end,
             "length": self.length,
             "present": self.present,
+            "name": self.name,
         }
 
 
@@ -264,7 +273,7 @@ def interval_value(interval: IntervalVar) -> IntervalValue | None:
     else:
         length = value(length_val)
 
-    return IntervalValue(start=start, length=length, present=True)
+    return IntervalValue(start=start, length=length, present=True, name=interval.name)
 
 
 def model_statistics() -> ModelStatistics:

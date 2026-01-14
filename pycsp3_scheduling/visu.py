@@ -7,12 +7,16 @@ Requires matplotlib for rendering. Install with:
     pip install matplotlib
 
 Basic usage:
-    >>> from pycsp3_scheduling import visu
+    >>> from pycsp3_scheduling import visu, interval_value
+    >>> from pycsp3_scheduling.interop import IntervalValue
     >>> if visu.is_visu_enabled():
     ...     visu.timeline("My Schedule")
     ...     visu.panel("Machine 1")
-    ...     visu.interval(0, 10, "Task A", color=0)
-    ...     visu.interval(10, 25, "Task B", color=1)
+    ...     # Using IntervalValue directly
+    ...     visu.interval(IntervalValue(start=0, length=10, name="Task A"), color=0)
+    ...     # Or from solved intervals
+    ...     val = interval_value(task)
+    ...     visu.interval(val, color=1)
     ...     visu.show()
 
 The visualization consists of:
@@ -311,7 +315,7 @@ def timeline(
     Example:
         >>> visu.timeline("Job Shop Schedule", origin=0, horizon=100)
         >>> visu.panel("Machine 1")
-        >>> visu.interval(0, 10, "Task A")
+        >>> visu.interval(IntervalValue(start=0, length=10, name="Task A"))
     """
     global _current_timeline, _current_panel
     _current_timeline = Timeline(title=title, origin=origin, horizon=horizon)
@@ -332,9 +336,9 @@ def panel(name: str | None = None) -> None:
     Example:
         >>> visu.timeline("Schedule")
         >>> visu.panel("Machine 1")
-        >>> visu.interval(0, 10, "Task A")
+        >>> visu.interval(IntervalValue(start=0, length=10, name="Task A"))
         >>> visu.panel("Machine 2")
-        >>> visu.interval(5, 15, "Task B")
+        >>> visu.interval(IntervalValue(start=5, length=10, name="Task B"))
     """
     global _current_panel
     if _current_timeline is None:
@@ -345,9 +349,7 @@ def panel(name: str | None = None) -> None:
 
 
 def interval(
-    start: int | float,
-    end: int | float,
-    name: str | None = None,
+    value: IntervalValue,
     color: int | str | None = None,
     height: float = 0.8,
 ) -> None:
@@ -357,31 +359,31 @@ def interval(
     Displays a colored rectangle representing a task or activity.
 
     Args:
-        start: Start time of the interval.
-        end: End time of the interval.
-        name: Label to display on the interval.
+        value: An IntervalValue containing start, end, and optionally name.
         color: Color as integer index or color string.
                Integer indices are automatically mapped to palette colors.
         height: Height of the bar (0.0 to 1.0, default 0.8).
 
     Example:
         >>> visu.panel("Machine 1")
-        >>> visu.interval(0, 10, "Task A", color=0)
-        >>> visu.interval(10, 25, "Task B", color=1)
-        >>> visu.interval(25, 30, "Task C", color="red")
+        >>> value = IntervalValue(start=0, length=10, name="Task A")
+        >>> visu.interval(value, color=0)
+        >>> # Or from a solved interval:
+        >>> val = interval_value(task)
+        >>> visu.interval(val, color=1)
     """
     if _current_panel is None:
         panel()
 
     # Apply naming function if set
-    display_name = name
-    if _naming_func is not None and name is not None:
-        display_name = _naming_func(name)
+    display_name = value.name
+    if _naming_func is not None and value.name is not None:
+        display_name = _naming_func(value.name)
 
     _current_panel.intervals.append(
         IntervalData(
-            start=start,
-            end=end,
+            start=value.start,
+            end=value.end,
             name=display_name,
             color=color,
             height=height,
@@ -409,9 +411,9 @@ def transition(
 
     Example:
         >>> visu.panel("Machine")
-        >>> visu.interval(0, 10, "Task A", color=0)
+        >>> visu.interval(IntervalValue(start=0, length=10, name="Task A"), color=0)
         >>> visu.transition(10, 12)  # Setup time
-        >>> visu.interval(12, 25, "Task B", color=1)
+        >>> visu.interval(IntervalValue(start=12, length=13, name="Task B"), color=1)
     """
     if _current_panel is None:
         panel()
@@ -587,7 +589,7 @@ def naming(func: Callable[[str], str] | None) -> None:
     Example:
         >>> # Show only task numbers
         >>> visu.naming(lambda n: n.split("_")[-1])
-        >>> visu.interval(0, 10, "task_1")  # Displays as "1"
+        >>> visu.interval(IntervalValue(start=0, length=10, name="task_1"))  # Displays as "1"
     """
     global _naming_func
     _naming_func = func
@@ -605,7 +607,7 @@ def show(block: bool = True) -> None:
     Example:
         >>> visu.timeline("Schedule")
         >>> visu.panel("Machine 1")
-        >>> visu.interval(0, 10, "Task A")
+        >>> visu.interval(IntervalValue(start=0, length=10, name="Task A"))
         >>> visu.show()
     """
     if not _MATPLOTLIB_AVAILABLE:
@@ -642,7 +644,7 @@ def savefig(
     Example:
         >>> visu.timeline("Schedule")
         >>> visu.panel("Machine 1")
-        >>> visu.interval(0, 10, "Task A")
+        >>> visu.interval(IntervalValue(start=0, length=10, name="Task A"))
         >>> visu.savefig("schedule.png")
         >>> visu.savefig("schedule.pdf", dpi=300)
     """
@@ -804,8 +806,8 @@ def annotate(
 
 
 def show_interval(
-    interval: IntervalVar,
-    value: IntervalValue | dict | None = None,
+    iv: IntervalVar,
+    value: IntervalValue | None = None,
     panel_name: str | None = None,
     color: int | str | None = None,
 ) -> None:
@@ -815,8 +817,8 @@ def show_interval(
     If value is provided, uses the solved values. Otherwise, displays the bounds.
 
     Args:
-        interval: The IntervalVar to display.
-        value: Solved IntervalValue or dict with start/end keys.
+        iv: The IntervalVar to display.
+        value: Solved IntervalValue from interval_value().
         panel_name: Name for the panel (defaults to interval name).
         color: Color for the interval.
 
@@ -826,30 +828,30 @@ def show_interval(
         >>> vals = interval_value(task)
         >>> visu.show_interval(task, vals)
     """
+    from pycsp3_scheduling.interop import IntervalValue as IV
+
     if panel_name is None:
-        panel_name = interval.name or "Interval"
+        panel_name = iv.name or "Interval"
 
     if _current_panel is None or _current_panel.name != panel_name:
         panel(panel_name)
 
     if value is not None:
         # Use solved values
-        if hasattr(value, "start"):
-            start, end = value.start, value.end
-        else:
-            start, end = value["start"], value["end"]
+        interval(value, color=color)
     else:
-        # Use bounds
-        start = interval.start_min
-        end = interval.start_min + interval.length_min
-
-    interval_func = globals()["interval"]
-    interval_func(start, end, interval.name, color=color)
+        # Use bounds - create IntervalValue from bounds
+        iv_bounds = IV(
+            start=iv.start_min,
+            length=iv.length_min,
+            name=iv.name,
+        )
+        interval(iv_bounds, color=color)
 
 
 def show_sequence(
     seq: SequenceVar,
-    values: Sequence[IntervalValue | dict] | None = None,
+    values: Sequence[IntervalValue] | None = None,
     panel_name: str | None = None,
 ) -> None:
     """
@@ -857,7 +859,7 @@ def show_sequence(
 
     Args:
         seq: The SequenceVar to display.
-        values: List of solved IntervalValue or dicts for each interval.
+        values: List of solved IntervalValue for each interval.
         panel_name: Name for the panel (defaults to sequence name).
 
     Example:
@@ -866,33 +868,32 @@ def show_sequence(
         >>> vals = [interval_value(t) for t in tasks]
         >>> visu.show_sequence(machine, vals)
     """
+    from pycsp3_scheduling.interop import IntervalValue as IV
+
     if panel_name is None:
         panel_name = seq.name or "Sequence"
 
     panel(panel_name)
 
-    intervals_data = []
+    intervals_data: list[tuple[IntervalValue, int | str]] = []
     for i, intv in enumerate(seq.intervals):
         if values is not None and i < len(values):
             val = values[i]
             if val is None:
                 continue  # Absent interval
-            if hasattr(val, "start"):
-                start, end = val.start, val.end
-            else:
-                start, end = val["start"], val["end"]
+            iv = val
         else:
-            start = intv.start_min
-            end = intv.start_min + intv.length_min
+            # Use bounds
+            iv = IV(start=intv.start_min, length=intv.length_min, name=intv.name)
 
         color = seq.types[i] if seq.types else i
-        intervals_data.append((start, end, intv.name, color))
+        intervals_data.append((iv, color))
 
     # Sort by start time
-    intervals_data.sort(key=lambda x: x[0])
+    intervals_data.sort(key=lambda x: x[0].start)
 
-    for start, end, name, color in intervals_data:
-        interval(start, end, name, color=color)
+    for iv, color in intervals_data:
+        interval(iv, color=color)
 
 
 # =============================================================================
@@ -1262,11 +1263,14 @@ if vlines:
         visu.vline(x, color=color, style=style, label=label)
 
 # Add panels
+from pycsp3_scheduling.interop import IntervalValue
 for panel_data in visu_data.get("panels", []):
     visu.panel(panel_data.get("name"))
     for intv in panel_data.get("intervals", []):
-        start, end, name, color = intv[0], intv[1], intv[2] if len(intv) > 2 else None, intv[3] if len(intv) > 3 else None
-        visu.interval(start, end, name, color=color)
+        start, end = intv[0], intv[1]
+        name = intv[2] if len(intv) > 2 else None
+        color = intv[3] if len(intv) > 3 else None
+        visu.interval(IntervalValue(start=start, length=end-start, name=name), color=color)
 
 visu.savefig(filename)
 '''

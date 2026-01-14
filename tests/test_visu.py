@@ -77,9 +77,11 @@ class TestInterval:
 
     def test_interval_adds_to_panel(self):
         """interval() adds interval data to the current panel."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.timeline("Test")
         visu.panel("Machine")
-        visu.interval(0, 10, "Task A", color=0)
+        visu.interval(IntervalValue(start=0, length=10, name="Task A"), color=0)
         assert len(visu._current_panel.intervals) == 1
         intv = visu._current_panel.intervals[0]
         assert intv.start == 0
@@ -89,17 +91,21 @@ class TestInterval:
 
     def test_interval_auto_creates_panel(self):
         """interval() creates a panel if none exists."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.timeline("Test")
-        visu.interval(0, 10, "Task")
+        visu.interval(IntervalValue(start=0, length=10, name="Task"))
         assert visu._current_panel is not None
         assert len(visu._current_panel.intervals) == 1
 
     def test_multiple_intervals(self):
         """Multiple intervals can be added to a panel."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.panel("Machine")
-        visu.interval(0, 10, "Task A", color=0)
-        visu.interval(10, 25, "Task B", color=1)
-        visu.interval(25, 30, "Task C", color=2)
+        visu.interval(IntervalValue(start=0, length=10, name="Task A"), color=0)
+        visu.interval(IntervalValue(start=10, length=15, name="Task B"), color=1)
+        visu.interval(IntervalValue(start=25, length=5, name="Task C"), color=2)
         assert len(visu._current_panel.intervals) == 3
 
 
@@ -204,17 +210,21 @@ class TestNaming:
 
     def test_naming_applies_to_intervals(self):
         """naming() applies transformation to interval names."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.naming(lambda n: n.upper())
         visu.panel("Machine")
-        visu.interval(0, 10, "task")
+        visu.interval(IntervalValue(start=0, length=10, name="task"))
         assert visu._current_panel.intervals[0].name == "TASK"
 
     def test_naming_none_disables(self):
         """naming(None) disables transformation."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.naming(lambda n: n.upper())
         visu.naming(None)
         visu.panel("Machine")
-        visu.interval(0, 10, "task")
+        visu.interval(IntervalValue(start=0, length=10, name="task"))
         assert visu._current_panel.intervals[0].name == "task"
 
 
@@ -247,8 +257,10 @@ class TestShowInterval:
 
     def test_show_interval_with_value(self):
         """show_interval displays interval with solved values."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         task = IntervalVar(size=10, name="task")
-        value = {"start": 5, "end": 15}
+        value = IntervalValue(start=5, length=10, name="task")
 
         visu.timeline("Test")
         visu.show_interval(task, value)
@@ -276,14 +288,16 @@ class TestShowSequence:
 
     def test_show_sequence_with_values(self):
         """show_sequence displays sequence with solved values."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         tasks = [
             IntervalVar(size=5, name="t1"),
             IntervalVar(size=5, name="t2"),
         ]
         seq = SequenceVar(intervals=tasks, name="machine")
         values = [
-            {"start": 0, "end": 5},
-            {"start": 10, "end": 15},
+            IntervalValue(start=0, length=5, name="t1"),
+            IntervalValue(start=10, length=5, name="t2"),
         ]
 
         visu.timeline("Test")
@@ -298,9 +312,11 @@ class TestReset:
 
     def test_reset_clears_state(self):
         """reset() clears all visualization state."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.timeline("Test")
         visu.panel("Panel")
-        visu.interval(0, 10, "Task")
+        visu.interval(IntervalValue(start=0, length=10, name="Task"))
         visu._get_color(0)  # Add to color map
 
         visu.reset()
@@ -463,10 +479,12 @@ class TestSaveFig:
 
     def test_savefig_creates_file(self, tmp_path):
         """savefig() creates an image file."""
+        from pycsp3_scheduling.interop import IntervalValue
+
         visu.reset()
         visu.timeline("Test")
         visu.panel("Machine")
-        visu.interval(0, 10, "Task")
+        visu.interval(IntervalValue(start=0, length=10, name="Task"))
 
         output_file = tmp_path / "test.png"
         visu.savefig(str(output_file))
