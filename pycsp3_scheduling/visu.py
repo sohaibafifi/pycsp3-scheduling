@@ -1015,7 +1015,7 @@ def _render_panel(
     if panel.panel_type == "function":
         _render_function_panel(ax, panel, origin, horizon)
     else:
-        _render_interval_panel(ax, panel, panel_index)
+        _render_interval_panel(ax, panel, panel_index, origin, horizon)
 
     # Set panel name as y-label
     if panel.name:
@@ -1029,7 +1029,9 @@ def _render_panel(
     ax.grid(axis="x", linestyle="--", alpha=0.3)
 
 
-def _render_interval_panel(ax: Axes, panel: Panel, panel_index: int) -> None:
+def _render_interval_panel(
+    ax: Axes, panel: Panel, panel_index: int, origin: int | float, horizon: int | float
+) -> None:
     """Render an interval/sequence panel."""
     ax.set_ylim(0, 1)
 
@@ -1058,6 +1060,9 @@ def _render_interval_panel(ax: Axes, panel: Panel, panel_index: int) -> None:
             hatch="\\\\",
         )
 
+    # Calculate timeline span for text fitting
+    timeline_span = horizon - origin
+
     # Render intervals
     for i, intv in enumerate(panel.intervals):
         color = _get_color(intv.color, i)
@@ -1083,9 +1088,8 @@ def _render_interval_panel(ax: Axes, panel: Panel, panel_index: int) -> None:
             # Determine text color based on background brightness
             text_color = "white" if _is_dark_color(color) else "black"
 
-            # Estimate if text fits (rough heuristic: ~0.7 units per character at fontsize 9)
-            # This uses data coordinates, so we need to check relative to interval width
-            display_name = _fit_text_to_width(intv.name, interval_width)
+            # Fit text to interval width, accounting for timeline scale
+            display_name = _fit_text_to_width(intv.name, interval_width, horizon=timeline_span)
 
             if display_name:
                 ax.text(
@@ -1139,18 +1143,29 @@ def _render_function_panel(
     ax.set_ylim(0, max_value * 1.1)
 
 
-def _fit_text_to_width(text: str, width: float, char_width: float = 0.8) -> str | None:
+def _fit_text_to_width(
+    text: str, width: float, char_width: float | None = None, horizon: float = 100.0
+) -> str | None:
     """
     Fit text to a given width, truncating with ellipsis if needed.
 
     Args:
         text: The text to fit.
         width: Available width in data units.
-        char_width: Estimated width per character in data units.
+        char_width: Estimated width per character in data units. If None, computed
+            based on the horizon (figure spans ~12 inches, font ~0.06 inches/char).
+        horizon: The total timeline span for scaling calculations.
 
     Returns:
         The fitted text, possibly truncated with "...", or None if too small.
     """
+    if char_width is None:
+        # At fontsize 9, character width is roughly 0.06 inches
+        # Figure width is 12 inches, so chars that fit = 12 / 0.06 = 200
+        # If horizon=100, then char_width = 100 / 200 = 0.5 data units per char
+        # Formula: char_width = horizon * 0.06 / 12 = horizon * 0.005
+        char_width = max(0.1, horizon * 0.005)
+
     # Estimate how many characters fit
     max_chars = int(width / char_width)
 
