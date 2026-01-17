@@ -9,6 +9,7 @@ Scheduling extension for [pycsp3](https://pycsp.org) with interval variables, se
 - **Sequence Variables**: Ordered sequences of intervals on disjunctive resources
 - **Precedence Constraints**: `end_before_start`, `start_at_start`, etc.
 - **Grouping Constraints**: `span`, `alternative`, `synchronize`
+- **Sequence Constraints**: `SeqNoOverlap`, `first`, `last`, `before`, `previous`, `same_sequence`
 - **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
 - **State Functions**: Model resource states with transitions
 - **XCSP3 Extension**: Output scheduling models in extended XCSP3 format
