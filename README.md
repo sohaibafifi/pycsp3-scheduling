@@ -132,6 +132,17 @@ minimize(Maximum(end_time(t) for t in tasks))
 | `size_of(interval, absent_value=0)` | Size/duration of interval |
 | `length_of(interval, absent_value=0)` | Length of interval |
 | `presence_of(interval)` | Boolean presence status |
+| `overlap_length(interval1, interval2, absent_value=0)` | Overlap duration between two intervals |
+| `expr_min(*args)` | Minimum of scheduling expressions |
+| `expr_max(*args)` | Maximum of scheduling expressions |
+
+### Element Expressions (Array Indexing)
+
+| Function | Description |
+|----------|-------------|
+| `element(array, index)` | Access array element by interval expression index |
+| `element2d(matrix, row, col)` | Access 2D matrix element by interval expressions |
+| `ElementMatrix(matrix)` | Wrapper for 2D indexing with `[]` operator |
 
 ### Interop Helpers
 
@@ -139,6 +150,10 @@ minimize(Maximum(end_time(t) for t in tasks))
 |----------|-------------|
 | `start_time(interval)` | pycsp3 variable for start time |
 | `end_time(interval)` | pycsp3 expression for end time |
+| `presence_time(interval)` | pycsp3 variable for presence (optional intervals) |
+| `interval_value(interval)` | Get solved interval values (start, end, size, present) |
+| `model_statistics()` | Get model statistics (variables, constraints counts) |
+| `solution_statistics()` | Get solution statistics after solving |
 
 ### Precedence Constraints
 
@@ -161,6 +176,33 @@ minimize(Maximum(end_time(t) for t in tasks))
 | `alternative(main, alts, card=1)` | Select `card` alternatives matching main |
 | `synchronize(main, intervals)` | All present intervals sync with main |
 
+### Sequence Constraints
+
+| Constraint | Description |
+|------------|-------------|
+| `SeqNoOverlap(sequence, transition_matrix, is_direct)` | Non-overlap with optional transition times |
+| `first(sequence, interval)` | Constrain interval to be first in sequence |
+| `last(sequence, interval)` | Constrain interval to be last in sequence |
+| `before(sequence, interval1, interval2)` | interval1 must end before interval2 starts |
+| `previous(sequence, interval1, interval2)` | interval1 immediately precedes interval2 |
+| `same_sequence(seq1, seq2)` | Common intervals have same position in both |
+| `same_common_subsequence(seq1, seq2)` | Common intervals have same relative order |
+
+### Sequence Accessor Expressions
+
+| Function | Description |
+|----------|-------------|
+| `start_of_next(sequence, interval, absent_value)` | Start time of next interval in sequence |
+| `end_of_next(sequence, interval, absent_value)` | End time of next interval |
+| `size_of_next(sequence, interval, absent_value)` | Size of next interval |
+| `length_of_next(sequence, interval, absent_value)` | Length of next interval |
+| `type_of_next(sequence, interval, absent_value)` | Type of next interval |
+| `start_of_prev(sequence, interval, absent_value)` | Start time of previous interval |
+| `end_of_prev(sequence, interval, absent_value)` | End time of previous interval |
+| `size_of_prev(sequence, interval, absent_value)` | Size of previous interval |
+| `length_of_prev(sequence, interval, absent_value)` | Length of previous interval |
+| `type_of_prev(sequence, interval, absent_value)` | Type of previous interval |
+
 ### Cumulative Functions
 
 | Function | Description |
@@ -169,16 +211,21 @@ minimize(Maximum(end_time(t) for t in tasks))
 | `step_at(time, height)` | Step at fixed time point |
 | `step_at_start(interval, height)` | Step at interval start |
 | `step_at_end(interval, height)` | Step at interval end |
+| `height_at_start(interval, cumul)` | Cumulative height at interval start |
+| `height_at_end(interval, cumul)` | Cumulative height at interval end |
 | `cumul_range(cumul, min, max)` | Constrain cumul to [min, max] |
+| `always_in(cumul, interval, min, max)` | Cumul in range during interval |
+| `SeqCumulative(sequence, heights, capacity)` | Cumulative on sequence with per-interval heights |
 
 ### State Functions
 
 | Function | Description |
 |----------|-------------|
-| `StateFunction(transition_matrix)` | Create state function |
-| `always_in(func, interval, min, max)` | State in range during interval |
+| `StateFunction(transition_matrix)` | Create state function with optional transitions |
+| `TransitionMatrix(n_states)` | Create transition matrix for state function |
 | `always_equal(func, interval, value)` | State equals value during interval |
 | `always_constant(func, interval)` | State constant during interval |
+| `always_no_state(func, interval)` | No state assigned during interval |
 
 ## Requirements
 
