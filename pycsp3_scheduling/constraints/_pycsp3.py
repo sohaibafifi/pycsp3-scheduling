@@ -13,7 +13,8 @@ Key concepts:
 from __future__ import annotations
 
 import bisect
-from typing import TYPE_CHECKING, Any
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, Sequence
 
 from pycsp3_scheduling.variables.interval import (
     INTERVAL_MAX,
@@ -22,6 +23,39 @@ from pycsp3_scheduling.variables.interval import (
     Step,
     get_registered_intervals,
 )
+
+
+# =============================================================================
+# SHARED VALIDATION AND NODE BUILDING UTILITIES
+# =============================================================================
+
+
+def _get_node_builders():
+    """Import and return pycsp3 Node building utilities."""
+    from pycsp3.classes.nodes import Node, TypeNode
+
+    return Node, TypeNode
+
+
+def _validate_interval(interval: IntervalVar, func_name: str) -> None:
+    """Validate that input is an IntervalVar."""
+    if not isinstance(interval, IntervalVar):
+        raise TypeError(f"{func_name} expects an IntervalVar, got {type(interval).__name__}")
+
+
+def _validate_intervals(
+    intervals: Sequence[IntervalVar] | Iterable[IntervalVar], func_name: str
+) -> list[IntervalVar]:
+    """Validate and convert intervals to list."""
+    result = list(intervals)
+    for i, interval in enumerate(result):
+        if not isinstance(interval, IntervalVar):
+            raise TypeError(
+                f"{func_name}: intervals[{i}] must be an IntervalVar, "
+                f"got {type(interval).__name__}"
+            )
+    return result
+
 
 if TYPE_CHECKING:
     from pycsp3.classes.main.variables import Variable
@@ -699,3 +733,12 @@ def clear_pycsp3_cache() -> None:
     _presence_vars.clear()
     _intensity_constraints_posted.clear()
     _intensity_table_cache.clear()
+
+
+def _build_end_expr(interval: IntervalVar, Node, TypeNode):
+    """Build end expression: start + length."""
+    start = start_var(interval)
+    length = length_value(interval)
+    if isinstance(length, int) and length == 0:
+        return start
+    return Node.build(TypeNode.ADD, start, length)

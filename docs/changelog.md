@@ -5,10 +5,28 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### [0.2.4] - 2026-01-20
+### WIP
+
   - Renamed `type_of_next`/`type_of_prev` to `next_arg`/`prev_arg` (old names still work as aliases)
-  - Updated documentation for type_of_next/prev, next_arg/prev_arg
-  - Add extra Forbidden Time and Presence constraints
+  - **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
+    - Prevent intervals from starting, ending, or spanning during specific time periods
+  - **Presence Constraints**: `presence_implies`, `presence_or`, `presence_xor`
+    - Express logical relationships between optional interval presence
+  - **Group Presence Constraints**: `all_present_or_all_absent`, `presence_or_all`, `if_present_then`
+    - Handle all-or-nothing groups and conditional constraints
+  - **Cardinality Constraints**: `at_least_k_present`, `at_most_k_present`, `exactly_k_present`
+    - Control how many optional intervals must be present
+  - **Chain Constraints**: `chain`, `strict_chain`
+    - Enforce sequential execution with optional delays
+  - **Overlap Constraints**: `must_overlap`, `overlap_at_least`
+    - Require intervals to share time or overlap by minimum duration
+  - **Disjunctive Constraint**: `disjunctive`
+    - Unary resource constraint (at most one interval active at a time)
+  - **No-Overlap Pairwise**: `no_overlap_pairwise`
+    - Simple pairwise no-overlap without sequence variable overhead
+  - **Aggregate Expressions**: `count_present`, `earliest_start`, `latest_end`, `span_length`, `makespan`
+    - Aggregate expressions over interval collections for constraints and objectives
+  - Updated documentation
 
 ## [0.1.7] - 2026-01-05
   - Fixed VRPTW example notebook with distance minimization objective

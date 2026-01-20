@@ -24,6 +24,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 
 from pycsp3_scheduling.constraints._pycsp3 import (
+    _build_end_expr,
+    _get_node_builders,
+    _validate_interval,
+    _validate_intervals,
     length_value,
     presence_var,
     start_var,
@@ -34,43 +38,14 @@ if TYPE_CHECKING:
     pass
 
 
-def _validate_interval(interval: IntervalVar, name: str) -> None:
-    """Validate that argument is an IntervalVar."""
-    if not isinstance(interval, IntervalVar):
-        raise TypeError(f"{name} must be an IntervalVar, got {type(interval).__name__}")
-
-
 def _validate_interval_list(
     intervals: Sequence[IntervalVar], name: str
 ) -> list[IntervalVar]:
-    """Validate and convert interval sequence."""
-    if not isinstance(intervals, (list, tuple)):
-        raise TypeError(f"{name} must be a list or tuple of IntervalVar")
-    result = list(intervals)
-    for i, interval in enumerate(result):
-        if not isinstance(interval, IntervalVar):
-            raise TypeError(
-                f"{name}[{i}] must be an IntervalVar, got {type(interval).__name__}"
-            )
+    """Validate and convert interval sequence (requires non-empty)."""
+    result = _validate_intervals(intervals, name)
     if len(result) == 0:
         raise ValueError(f"{name} cannot be empty")
     return result
-
-
-def _get_node_builders():
-    """Import and return pycsp3 Node building utilities."""
-    from pycsp3.classes.nodes import Node, TypeNode
-
-    return Node, TypeNode
-
-
-def _build_end_expr(interval: IntervalVar, Node, TypeNode):
-    """Build end expression: start + length."""
-    start = start_var(interval)
-    length = length_value(interval)
-    if isinstance(length, int) and length == 0:
-        return start
-    return Node.build(TypeNode.ADD, start, length)
 
 
 # =============================================================================

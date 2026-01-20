@@ -139,6 +139,26 @@ satisfy(chain(steps, delays=[1, 2, 3]))               # variable delays
 satisfy(strict_chain(steps))                          # back-to-back (no gaps)
 ```
 
+### Overlap Constraints
+
+```python
+satisfy(must_overlap(a, b))                           # a and b must share some time
+satisfy(overlap_at_least(a, b, 30))                   # must overlap by at least 30
+satisfy(no_overlap_pairwise(tasks))                   # simple pairwise no-overlap
+satisfy(disjunctive(tasks))                           # unary resource (at most one)
+satisfy(disjunctive(tasks, transition_times=matrix))  # with transition times
+```
+
+### Aggregate Expressions
+
+```python
+satisfy(count_present(tasks) >= 3)                    # at least 3 must be present
+satisfy(earliest_start(tasks) >= 10)                  # all start after time 10
+satisfy(latest_end(tasks) <= 100)                     # all end before time 100
+minimize(makespan(tasks))                             # minimize latest end time
+minimize(span_length(tasks))                          # minimize total span
+```
+
 ### Cumulative Resources
 
 ```python

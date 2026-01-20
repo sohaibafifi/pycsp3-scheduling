@@ -25,7 +25,7 @@ Absent interval semantics:
 
 from __future__ import annotations
 
-from pycsp3_scheduling.constraints._pycsp3 import length_value, start_var
+from pycsp3_scheduling.constraints._pycsp3 import _get_node_builders, length_value, start_var
 from pycsp3_scheduling.variables.interval import IntervalVar
 
 
@@ -37,13 +37,6 @@ def _validate_precedence_args(
         raise TypeError(f"{func_name} expects IntervalVar inputs")
     if not isinstance(delay, int):
         raise TypeError("delay must be an int")
-
-
-def _get_node_builders():
-    """Import and return pycsp3 Node building utilities."""
-    from pycsp3.classes.nodes import Node, TypeNode
-
-    return Node, TypeNode
 
 
 # =============================================================================

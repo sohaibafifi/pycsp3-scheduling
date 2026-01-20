@@ -7,6 +7,7 @@ This module provides accessor functions that return expressions from interval va
 - expr_min, expr_max
 - Sequence accessors: start_of_next, start_of_prev, etc.
 - Element expressions for array indexing: element, element2d, TransitionMatrix
+- Aggregate expressions: count_present, earliest_start, latest_end, makespan
 """
 
 from __future__ import annotations
@@ -44,6 +45,14 @@ from pycsp3_scheduling.expressions.element import (
     element2d,
 )
 
+from pycsp3_scheduling.expressions.aggregate import (
+    count_present,
+    earliest_start,
+    latest_end,
+    makespan,
+    span_length,
+)
+
 __all__ = [
     # Expression class
     "IntervalExpr",
@@ -77,4 +86,10 @@ __all__ = [
     "element2d",
     # Cache management
     "clear_sequence_expr_cache",
+    # Aggregate expressions
+    "count_present",
+    "earliest_start",
+    "latest_end",
+    "span_length",
+    "makespan",
 ]

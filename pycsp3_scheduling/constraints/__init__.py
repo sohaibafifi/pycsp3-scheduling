@@ -10,6 +10,7 @@ This module provides:
 - Forbidden time constraints: forbid_start, forbid_end, forbid_extent
 - Presence constraints: presence_implies, presence_or, presence_xor, etc.
 - Chain constraints: chain, strict_chain
+- Overlap constraints: must_overlap, overlap_at_least, disjunctive
 """
 
 from __future__ import annotations
@@ -76,6 +77,14 @@ from pycsp3_scheduling.constraints.chain import (
     strict_chain,
 )
 
+# Overlap constraints
+from pycsp3_scheduling.constraints.overlap import (
+    disjunctive,
+    must_overlap,
+    no_overlap_pairwise,
+    overlap_at_least,
+)
+
 __all__ = [
     # Exact timing constraints
     "start_at_start",
@@ -120,4 +129,9 @@ __all__ = [
     # Chain constraints
     "chain",
     "strict_chain",
+    # Overlap constraints
+    "must_overlap",
+    "overlap_at_least",
+    "no_overlap_pairwise",
+    "disjunctive",
 ]

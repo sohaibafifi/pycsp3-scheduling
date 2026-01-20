@@ -101,21 +101,21 @@ class TestSpan:
         """span rejects non-IntervalVar main."""
         subtasks = [IntervalVar(size=3, name="t1")]
 
-        with pytest.raises(TypeError, match="main must be an IntervalVar"):
+        with pytest.raises(TypeError, match="main expects an IntervalVar"):
             span("not_an_interval", subtasks)
 
     def test_span_invalid_subtasks_type(self):
         """span rejects non-list subtasks."""
         main = IntervalVar(name="main")
 
-        with pytest.raises(TypeError, match="subtasks must be a list"):
+        with pytest.raises(TypeError, match="must be an IntervalVar"):
             span(main, "not_a_list")
 
     def test_span_invalid_subtask_element(self):
         """span rejects non-IntervalVar in subtasks."""
         main = IntervalVar(name="main")
 
-        with pytest.raises(TypeError, match="subtasks\\[1\\] must be an IntervalVar"):
+        with pytest.raises(TypeError, match="intervals\\[1\\] must be an IntervalVar"):
             span(main, [IntervalVar(size=3, name="t1"), "invalid"])
 
     def test_span_empty_subtasks(self):
@@ -191,14 +191,14 @@ class TestAlternative:
         """alternative rejects non-IntervalVar main."""
         alts = [IntervalVar(size=10, optional=True, name="a1")]
 
-        with pytest.raises(TypeError, match="main must be an IntervalVar"):
+        with pytest.raises(TypeError, match="main expects an IntervalVar"):
             alternative(123, alts)
 
     def test_alternative_invalid_alternatives_type(self):
         """alternative rejects non-list alternatives."""
         main = IntervalVar(size=10, name="main")
 
-        with pytest.raises(TypeError, match="alternatives must be a list"):
+        with pytest.raises(TypeError, match="must be an IntervalVar"):
             alternative(main, "not_a_list")
 
     def test_alternative_empty_alternatives(self):
@@ -316,14 +316,14 @@ class TestSynchronize:
         """synchronize rejects non-IntervalVar main."""
         intervals = [IntervalVar(size=10, name="i1")]
 
-        with pytest.raises(TypeError, match="main must be an IntervalVar"):
+        with pytest.raises(TypeError, match="main expects an IntervalVar"):
             synchronize(None, intervals)
 
     def test_synchronize_invalid_intervals_type(self):
         """synchronize rejects non-list intervals."""
         main = IntervalVar(size=10, name="main")
 
-        with pytest.raises(TypeError, match="intervals must be a list"):
+        with pytest.raises(TypeError):
             synchronize(main, 123)
 
     def test_synchronize_empty_intervals(self):

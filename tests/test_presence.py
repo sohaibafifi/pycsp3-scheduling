@@ -1,4 +1,4 @@
-"""Tests for Priority 1 constraints: forbidden time, presence, and chain."""
+"""Tests for presence constraints."""
 
 import pytest
 
@@ -11,17 +11,12 @@ from pycsp3_scheduling.constraints import (
     all_present_or_all_absent,
     at_least_k_present,
     at_most_k_present,
-    chain,
     exactly_k_present,
-    forbid_end,
-    forbid_extent,
-    forbid_start,
     if_present_then,
     presence_implies,
     presence_or,
     presence_or_all,
     presence_xor,
-    strict_chain,
 )
 from pycsp3_scheduling.constraints._pycsp3 import clear_pycsp3_cache
 from pycsp3_scheduling.variables import (
@@ -43,158 +38,6 @@ def reset_state():
     clear_interval_registry()
     clear_sequence_registry()
     clear_pycsp3_cache()
-
-
-# =============================================================================
-# Forbidden Time Constraints
-# =============================================================================
-
-
-class TestForbidStart:
-    """Tests for forbid_start constraint."""
-
-    def test_basic_constraint(self):
-        """forbid_start returns constraint nodes."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_start(task, [(12, 13), (17, 24)])
-
-        assert isinstance(ctrs, list)
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            assert isinstance(ctr, Node)
-            assert ctr.type == TypeNode.OR
-
-    def test_single_period(self):
-        """forbid_start with single forbidden period."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_start(task, [(5, 10)])
-
-        assert len(ctrs) == 1
-        ctr_str = str(ctrs[0])
-        assert "or(" in ctr_str
-        assert "lt(" in ctr_str
-        assert "ge(" in ctr_str
-
-    def test_empty_periods(self):
-        """forbid_start with empty periods list returns empty."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_start(task, [])
-
-        assert ctrs == []
-
-    def test_optional_interval(self):
-        """forbid_start handles optional intervals."""
-        task = IntervalVar(size=10, optional=True, name="task")
-
-        ctrs = forbid_start(task, [(5, 10)])
-
-        assert len(ctrs) == 1
-        ctr_str = str(ctrs[0])
-        # Should include presence escape clause
-        assert "iv_p_" in ctr_str
-
-    def test_invalid_interval_type(self):
-        """forbid_start rejects non-IntervalVar."""
-        with pytest.raises(TypeError, match="IntervalVar"):
-            forbid_start("not_an_interval", [(5, 10)])
-
-    def test_invalid_period_format(self):
-        """forbid_start rejects malformed periods."""
-        task = IntervalVar(size=10, name="task")
-
-        with pytest.raises(TypeError, match="tuple"):
-            forbid_start(task, [(5,)])
-
-    def test_invalid_period_order(self):
-        """forbid_start rejects periods where start >= end."""
-        task = IntervalVar(size=10, name="task")
-
-        with pytest.raises(ValueError, match="start < end"):
-            forbid_start(task, [(10, 5)])
-
-
-class TestForbidEnd:
-    """Tests for forbid_end constraint."""
-
-    def test_basic_constraint(self):
-        """forbid_end returns constraint nodes."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_end(task, [(12, 13)])
-
-        assert isinstance(ctrs, list)
-        assert len(ctrs) == 1
-        assert isinstance(ctrs[0], Node)
-        assert ctrs[0].type == TypeNode.OR
-
-    def test_multiple_periods(self):
-        """forbid_end with multiple forbidden periods."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_end(task, [(5, 10), (15, 20), (25, 30)])
-
-        assert len(ctrs) == 3
-
-    def test_optional_interval(self):
-        """forbid_end handles optional intervals."""
-        task = IntervalVar(size=10, optional=True, name="task")
-
-        ctrs = forbid_end(task, [(5, 10)])
-
-        assert len(ctrs) == 1
-        ctr_str = str(ctrs[0])
-        assert "iv_p_" in ctr_str
-
-    def test_invalid_interval_type(self):
-        """forbid_end rejects non-IntervalVar."""
-        with pytest.raises(TypeError, match="IntervalVar"):
-            forbid_end(123, [(5, 10)])
-
-
-class TestForbidExtent:
-    """Tests for forbid_extent constraint."""
-
-    def test_basic_constraint(self):
-        """forbid_extent returns constraint nodes."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_extent(task, [(12, 13)])
-
-        assert isinstance(ctrs, list)
-        assert len(ctrs) == 1
-        assert isinstance(ctrs[0], Node)
-        assert ctrs[0].type == TypeNode.OR
-
-    def test_multiple_periods(self):
-        """forbid_extent with multiple forbidden periods."""
-        task = IntervalVar(size=10, name="task")
-
-        ctrs = forbid_extent(task, [(5, 10), (20, 25)])
-
-        assert len(ctrs) == 2
-
-    def test_optional_interval(self):
-        """forbid_extent handles optional intervals."""
-        task = IntervalVar(size=10, optional=True, name="task")
-
-        ctrs = forbid_extent(task, [(5, 10)])
-
-        assert len(ctrs) == 1
-        ctr_str = str(ctrs[0])
-        assert "iv_p_" in ctr_str
-
-    def test_invalid_interval_type(self):
-        """forbid_extent rejects non-IntervalVar."""
-        with pytest.raises(TypeError, match="IntervalVar"):
-            forbid_extent(None, [(5, 10)])
-
-
-# =============================================================================
-# Presence Constraints
-# =============================================================================
 
 
 class TestPresenceImplies:
@@ -489,129 +332,8 @@ class TestExactlyKPresent:
         assert len(ctrs) == 1
 
 
-# =============================================================================
-# Chain Constraints
-# =============================================================================
-
-
-class TestChain:
-    """Tests for chain constraint."""
-
-    def test_basic_chain(self):
-        """chain returns precedence constraints."""
-        intervals = [IntervalVar(size=i + 1, name=f"t{i}") for i in range(3)]
-
-        ctrs = chain(intervals)
-
-        # Should have n-1 constraints
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            assert isinstance(ctr, Node)
-            assert ctr.type == TypeNode.LE
-
-    def test_chain_with_uniform_delay(self):
-        """chain with uniform delay."""
-        intervals = [IntervalVar(size=5, name=f"t{i}") for i in range(3)]
-
-        ctrs = chain(intervals, delays=2)
-
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            ctr_str = str(ctrs[0])
-            assert "add(" in ctr_str
-
-    def test_chain_with_variable_delays(self):
-        """chain with variable delays."""
-        intervals = [IntervalVar(size=5, name=f"t{i}") for i in range(4)]
-
-        ctrs = chain(intervals, delays=[1, 2, 3])
-
-        assert len(ctrs) == 3
-
-    def test_chain_with_optional_intervals(self):
-        """chain handles optional intervals."""
-        intervals = [IntervalVar(size=5, optional=True, name=f"t{i}") for i in range(3)]
-
-        ctrs = chain(intervals)
-
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            assert ctr.type == TypeNode.OR  # Has presence escape clause
-
-    def test_chain_single_interval(self):
-        """chain with single interval raises error."""
-        intervals = [IntervalVar(size=5, name="t0")]
-
-        with pytest.raises(ValueError, match="at least 2"):
-            chain(intervals)
-
-    def test_chain_wrong_delays_length(self):
-        """chain with wrong delays length raises error."""
-        intervals = [IntervalVar(size=5, name=f"t{i}") for i in range(3)]
-
-        with pytest.raises(ValueError, match="length"):
-            chain(intervals, delays=[1])  # Should be 2
-
-    def test_chain_invalid_interval_type(self):
-        """chain rejects non-IntervalVar."""
-        with pytest.raises(TypeError, match="IntervalVar"):
-            chain(["a", "b"])
-
-
-class TestStrictChain:
-    """Tests for strict_chain constraint."""
-
-    def test_basic_strict_chain(self):
-        """strict_chain returns equality constraints."""
-        intervals = [IntervalVar(size=i + 1, name=f"t{i}") for i in range(3)]
-
-        ctrs = strict_chain(intervals)
-
-        # Should have n-1 constraints
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            assert isinstance(ctr, Node)
-            assert ctr.type == TypeNode.EQ
-
-    def test_strict_chain_with_delay(self):
-        """strict_chain with uniform delay."""
-        intervals = [IntervalVar(size=5, name=f"t{i}") for i in range(3)]
-
-        ctrs = strict_chain(intervals, delays=2)
-
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            assert ctr.type == TypeNode.EQ
-
-    def test_strict_chain_with_optional_intervals(self):
-        """strict_chain handles optional intervals."""
-        intervals = [IntervalVar(size=5, optional=True, name=f"t{i}") for i in range(3)]
-
-        ctrs = strict_chain(intervals)
-
-        assert len(ctrs) == 2
-        for ctr in ctrs:
-            assert ctr.type == TypeNode.OR  # Has presence escape clause
-
-
-# =============================================================================
-# Integration Tests
-# =============================================================================
-
-
-class TestPriority1Integration:
-    """Integration tests for priority 1 constraints with pycsp3."""
-
-    def test_satisfy_with_forbidden(self):
-        """Test forbidden constraints can be used with satisfy()."""
-        from pycsp3 import satisfy
-
-        task = IntervalVar(size=10, name="task")
-
-        # Should not raise
-        satisfy(forbid_start(task, [(12, 13)]))
-        satisfy(forbid_end(task, [(17, 18)]))
-        satisfy(forbid_extent(task, [(20, 25)]))
+class TestPresenceIntegration:
+    """Integration tests for presence constraints with pycsp3."""
 
     def test_satisfy_with_presence(self):
         """Test presence constraints can be used with satisfy()."""
@@ -622,24 +344,3 @@ class TestPriority1Integration:
 
         satisfy(presence_implies(a, b))
         satisfy(presence_or(a, b))
-
-    def test_satisfy_with_chain(self):
-        """Test chain constraint can be used with satisfy()."""
-        from pycsp3 import satisfy
-
-        tasks = [IntervalVar(size=i + 1, name=f"t{i}") for i in range(4)]
-
-        satisfy(chain(tasks))
-
-    def test_combined_constraints(self):
-        """Test combining multiple priority 1 constraints."""
-        from pycsp3 import satisfy
-
-        tasks = [IntervalVar(size=10, optional=True, name=f"t{i}") for i in range(3)]
-
-        # Chain with at least 2 present, no task during lunch
-        satisfy(
-            chain(tasks),
-            at_least_k_present(tasks, 2),
-            *[forbid_extent(t, [(12, 13)]) for t in tasks],
-        )

@@ -12,6 +12,8 @@ Scheduling extension for [pycsp3](https://pycsp.org) with interval variables, se
 - **Sequence Constraints**: `SeqNoOverlap`, `first`, `last`, `before`, `previous`, `same_sequence`
 - **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
 - **Presence Constraints**: `presence_implies`, `presence_or`, `presence_xor`, `chain`
+- **Overlap Constraints**: `must_overlap`, `overlap_at_least`, `disjunctive`
+- **Aggregate Expressions**: `count_present`, `earliest_start`, `latest_end`, `makespan`
 - **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
 - **State Functions**: Model resource states with transitions
 - **XCSP3 Extension**: Output scheduling models in extended XCSP3 format
@@ -257,6 +259,25 @@ minimize(Maximum(end_time(t) for t in tasks))
 |------------|-------------|
 | `chain(intervals, delays)` | Intervals execute in sequence with optional delays |
 | `strict_chain(intervals, delays)` | Intervals execute back-to-back (equality) |
+
+### Overlap Constraints
+
+| Constraint | Description |
+|------------|-------------|
+| `must_overlap(a, b)` | Two intervals must share some time |
+| `overlap_at_least(a, b, min_overlap)` | Intervals must overlap by at least min_overlap |
+| `no_overlap_pairwise(intervals)` | Simple pairwise no-overlap |
+| `disjunctive(intervals, transition_times)` | Unary resource (at most one active) |
+
+### Aggregate Expressions
+
+| Expression | Description |
+|------------|-------------|
+| `count_present(intervals)` | Count of present intervals |
+| `earliest_start(intervals)` | Minimum start time among present intervals |
+| `latest_end(intervals)` | Maximum end time among present intervals |
+| `span_length(intervals)` | Total span (latest_end - earliest_start) |
+| `makespan(intervals)` | Alias for latest_end |
 
 ## Requirements
 

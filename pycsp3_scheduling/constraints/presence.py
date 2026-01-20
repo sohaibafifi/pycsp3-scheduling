@@ -18,38 +18,13 @@ All constraints return pycsp3 Node objects that can be used with satisfy().
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Sequence
-
-from pycsp3_scheduling.constraints._pycsp3 import presence_var
+from pycsp3_scheduling.constraints._pycsp3 import (
+    _get_node_builders,
+    _validate_interval,
+    _validate_intervals,
+    presence_var,
+)
 from pycsp3_scheduling.variables.interval import IntervalVar
-
-
-def _get_node_builders():
-    """Import and return pycsp3 Node building utilities."""
-    from pycsp3.classes.nodes import Node, TypeNode
-
-    return Node, TypeNode
-
-
-def _validate_interval(interval: IntervalVar, func_name: str) -> None:
-    """Validate that input is an IntervalVar."""
-    if not isinstance(interval, IntervalVar):
-        raise TypeError(f"{func_name} expects an IntervalVar, got {type(interval).__name__}")
-
-
-def _validate_intervals(
-    intervals: Sequence[IntervalVar] | Iterable[IntervalVar], func_name: str
-) -> list[IntervalVar]:
-    """Validate and convert intervals to list."""
-    result = list(intervals)
-    for i, interval in enumerate(result):
-        if not isinstance(interval, IntervalVar):
-            raise TypeError(
-                f"{func_name}: intervals[{i}] must be an IntervalVar, "
-                f"got {type(interval).__name__}"
-            )
-    return result
 
 
 # =============================================================================

@@ -13,7 +13,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence, Union
 
-from pycsp3_scheduling.constraints._pycsp3 import length_value, presence_var, start_var
+from pycsp3_scheduling.constraints._pycsp3 import (
+    _build_end_expr,
+    _get_node_builders,
+    length_value,
+    presence_var,
+    start_var,
+)
 from pycsp3_scheduling.functions.cumul_functions import (
     CumulConstraint,
     CumulConstraintType,
@@ -24,22 +30,6 @@ from pycsp3_scheduling.functions.cumul_functions import (
 
 if TYPE_CHECKING:
     from pycsp3_scheduling.variables.interval import IntervalVar
-
-
-def _get_node_builders():
-    """Import and return pycsp3 Node building utilities."""
-    from pycsp3.classes.nodes import Node, TypeNode
-
-    return Node, TypeNode
-
-
-def _build_end_expr(interval, Node, TypeNode):
-    """Build end expression: start + length."""
-    start = start_var(interval)
-    length = length_value(interval)
-    if isinstance(length, int) and length == 0:
-        return start
-    return Node.build(TypeNode.ADD, start, length)
 
 
 def _is_simple_pulse_cumul(cumul: CumulFunction) -> bool:

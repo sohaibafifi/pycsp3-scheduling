@@ -125,6 +125,35 @@ Scheduling constraints for interval and sequence variables.
 .. autofunction:: pycsp3_scheduling.constraints.chain.strict_chain
 ```
 
+## Overlap Constraints
+
+```{eval-rst}
+.. module:: pycsp3_scheduling.constraints.overlap
+   :synopsis: Overlap and disjunctive constraints
+```
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.overlap.must_overlap
+.. autofunction:: pycsp3_scheduling.constraints.overlap.overlap_at_least
+.. autofunction:: pycsp3_scheduling.constraints.overlap.no_overlap_pairwise
+.. autofunction:: pycsp3_scheduling.constraints.overlap.disjunctive
+```
+
+## Aggregate Expressions
+
+```{eval-rst}
+.. module:: pycsp3_scheduling.expressions.aggregate
+   :synopsis: Aggregate expressions for interval collections
+```
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.expressions.aggregate.count_present
+.. autofunction:: pycsp3_scheduling.expressions.aggregate.earliest_start
+.. autofunction:: pycsp3_scheduling.expressions.aggregate.latest_end
+.. autofunction:: pycsp3_scheduling.expressions.aggregate.span_length
+.. autofunction:: pycsp3_scheduling.expressions.aggregate.makespan
+```
+
 ## Constraint Reference
 
 ### Precedence Constraint Semantics
@@ -304,4 +333,66 @@ satisfy(chain(steps, delays=[1, 2, 3]))
 
 # Back-to-back execution (no gaps)
 satisfy(strict_chain(steps))
+```
+
+### Overlap Constraints
+
+```python
+from pycsp3 import satisfy
+from pycsp3_scheduling import (
+    IntervalVar, must_overlap, overlap_at_least,
+    no_overlap_pairwise, disjunctive
+)
+
+# Two intervals must overlap
+meeting = IntervalVar(size=60, name="meeting")
+availability = IntervalVar(size=480, name="available")
+satisfy(must_overlap(meeting, availability))
+
+# Shifts must overlap by at least 30 minutes for handoff
+mentor_shift = IntervalVar(size=120, name="mentor")
+trainee_shift = IntervalVar(size=120, name="trainee")
+satisfy(overlap_at_least(mentor_shift, trainee_shift, 30))
+
+# Simple pairwise no-overlap (without sequence variable)
+meetings = [IntervalVar(size=30, name=f"meeting_{i}") for i in range(5)]
+satisfy(no_overlap_pairwise(meetings))
+
+# Disjunctive resource (unary - only one task at a time)
+tasks = [IntervalVar(size=d, name=f"task_{i}") for i, d in enumerate([10, 15, 8])]
+satisfy(disjunctive(tasks))
+
+# Disjunctive with transition times between types
+transition = [[0, 5], [3, 0]]
+satisfy(disjunctive(tasks, transition_times=transition))
+```
+
+### Aggregate Expressions
+
+```python
+from pycsp3 import satisfy, minimize, maximize
+from pycsp3_scheduling import (
+    IntervalVar, count_present, earliest_start, latest_end,
+    span_length, makespan
+)
+
+tasks = [IntervalVar(size=10, optional=True, name=f"t_{i}") for i in range(10)]
+
+# Must complete at least 5 tasks
+satisfy(count_present(tasks) >= 5)
+
+# Maximize number of completed tasks
+maximize(count_present(tasks))
+
+# All tasks must start after time 10
+satisfy(earliest_start(tasks) >= 10)
+
+# All tasks must end before time 100
+satisfy(latest_end(tasks) <= 100)
+
+# Minimize makespan (latest end time)
+minimize(makespan(tasks))
+
+# Minimize total span
+minimize(span_length(tasks))
 ```
