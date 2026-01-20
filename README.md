@@ -10,6 +10,8 @@ Scheduling extension for [pycsp3](https://pycsp.org) with interval variables, se
 - **Precedence Constraints**: `end_before_start`, `start_at_start`, etc.
 - **Grouping Constraints**: `span`, `alternative`, `synchronize`
 - **Sequence Constraints**: `SeqNoOverlap`, `first`, `last`, `before`, `previous`, `same_sequence`
+- **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
+- **Presence Constraints**: `presence_implies`, `presence_or`, `presence_xor`, `chain`
 - **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
 - **State Functions**: Model resource states with transitions
 - **XCSP3 Extension**: Output scheduling models in extended XCSP3 format
@@ -227,6 +229,34 @@ minimize(Maximum(end_time(t) for t in tasks))
 | `always_equal(func, interval, value)` | State equals value during interval |
 | `always_constant(func, interval)` | State constant during interval |
 | `always_no_state(func, interval)` | No state assigned during interval |
+
+### Forbidden Time Constraints
+
+| Constraint | Description |
+|------------|-------------|
+| `forbid_start(interval, periods)` | Interval cannot start during forbidden periods |
+| `forbid_end(interval, periods)` | Interval cannot end during forbidden periods |
+| `forbid_extent(interval, periods)` | Interval cannot overlap forbidden periods |
+
+### Presence Constraints
+
+| Constraint | Description |
+|------------|-------------|
+| `presence_implies(a, b)` | If a is present, b must be present |
+| `presence_or(a, b)` | At least one must be present |
+| `presence_xor(a, b)` | Exactly one must be present |
+| `all_present_or_all_absent(intervals)` | All-or-nothing group |
+| `if_present_then(interval, constraint)` | Apply constraint only when present |
+| `at_least_k_present(intervals, k)` | At least k must be present |
+| `at_most_k_present(intervals, k)` | At most k can be present |
+| `exactly_k_present(intervals, k)` | Exactly k must be present |
+
+### Chain Constraints
+
+| Constraint | Description |
+|------------|-------------|
+| `chain(intervals, delays)` | Intervals execute in sequence with optional delays |
+| `strict_chain(intervals, delays)` | Intervals execute back-to-back (equality) |
 
 ## Requirements
 

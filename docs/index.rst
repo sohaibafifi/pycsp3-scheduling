@@ -92,7 +92,6 @@ Additional Resources
    :maxdepth: 1
    :caption: Resources
 
-   roadmap
    changelog
    contributing
 

@@ -5,10 +5,10 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### In development 
+### [0.2.4] - 2026-01-20
   - Renamed `type_of_next`/`type_of_prev` to `next_arg`/`prev_arg` (old names still work as aliases)
   - Updated documentation for type_of_next/prev, next_arg/prev_arg
-
+  - Add extra Forbidden Time and Presence constraints
 
 ## [0.1.7] - 2026-01-05
   - Fixed VRPTW example notebook with distance minimization objective

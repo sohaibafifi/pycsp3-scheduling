@@ -110,6 +110,35 @@ satisfy(before(seq, tasks[1], tasks[2]))
 satisfy(previous(seq, tasks[1], tasks[2]))
 ```
 
+### Forbidden Time Constraints
+
+```python
+satisfy(forbid_start(task, [(12, 13), (17, 24)]))    # cannot start during these periods
+satisfy(forbid_end(task, [(6, 8)]))                   # cannot end during this period
+satisfy(forbid_extent(task, [(12, 13)]))              # cannot overlap this period
+```
+
+### Presence Constraints
+
+```python
+satisfy(presence_implies(main, setup))                # if main present, setup must be
+satisfy(presence_or(opt_a, opt_b))                    # at least one must be present
+satisfy(presence_xor(route_a, route_b))               # exactly one must be present
+satisfy(all_present_or_all_absent(subtasks))          # all-or-nothing
+satisfy(at_least_k_present(tasks, 3))                 # at least 3 must be present
+satisfy(at_most_k_present(tasks, 5))                  # at most 5 can be present
+satisfy(exactly_k_present(workers, 2))                # exactly 2 must be present
+```
+
+### Chain Constraints
+
+```python
+satisfy(chain(steps))                                 # steps execute in order
+satisfy(chain(steps, delays=2))                       # with gap of 2 between each
+satisfy(chain(steps, delays=[1, 2, 3]))               # variable delays
+satisfy(strict_chain(steps))                          # back-to-back (no gaps)
+```
+
 ### Cumulative Resources
 
 ```python

@@ -69,6 +69,62 @@ Scheduling constraints for interval and sequence variables.
 .. autofunction:: pycsp3_scheduling.constraints.sequence.same_common_subsequence
 ```
 
+## Forbidden Time Constraints
+
+```{eval-rst}
+.. module:: pycsp3_scheduling.constraints.forbidden
+   :synopsis: Forbidden time constraints
+```
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.forbidden.forbid_start
+.. autofunction:: pycsp3_scheduling.constraints.forbidden.forbid_end
+.. autofunction:: pycsp3_scheduling.constraints.forbidden.forbid_extent
+```
+
+## Presence Constraints
+
+```{eval-rst}
+.. module:: pycsp3_scheduling.constraints.presence
+   :synopsis: Presence implication constraints
+```
+
+### Binary Presence Constraints
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.presence.presence_implies
+.. autofunction:: pycsp3_scheduling.constraints.presence.presence_or
+.. autofunction:: pycsp3_scheduling.constraints.presence.presence_xor
+```
+
+### Group Presence Constraints
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.presence.all_present_or_all_absent
+.. autofunction:: pycsp3_scheduling.constraints.presence.presence_or_all
+.. autofunction:: pycsp3_scheduling.constraints.presence.if_present_then
+```
+
+### Cardinality Constraints
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.presence.at_least_k_present
+.. autofunction:: pycsp3_scheduling.constraints.presence.at_most_k_present
+.. autofunction:: pycsp3_scheduling.constraints.presence.exactly_k_present
+```
+
+## Chain Constraints
+
+```{eval-rst}
+.. module:: pycsp3_scheduling.constraints.chain
+   :synopsis: Chain constraints for sequential execution
+```
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.chain.chain
+.. autofunction:: pycsp3_scheduling.constraints.chain.strict_chain
+```
+
 ## Constraint Reference
 
 ### Precedence Constraint Semantics
@@ -173,4 +229,79 @@ satisfy(before(seq, tasks[1], tasks[2]))
 
 # task[1] must immediately precede task[2]
 satisfy(previous(seq, tasks[1], tasks[2]))
+```
+
+### Forbidden Time Constraints
+
+```python
+from pycsp3 import satisfy
+from pycsp3_scheduling import IntervalVar, forbid_start, forbid_end, forbid_extent
+
+task = IntervalVar(size=10, name="task")
+
+# Cannot start during lunch break (12-13) or after hours (17-24)
+satisfy(forbid_start(task, [(12, 13), (17, 24)]))
+
+# Cannot end during maintenance window (6-8)
+satisfy(forbid_end(task, [(6, 8)]))
+
+# Cannot overlap the lunch break at all
+satisfy(forbid_extent(task, [(12, 13)]))
+```
+
+### Presence Constraints
+
+```python
+from pycsp3 import satisfy
+from pycsp3_scheduling import (
+    IntervalVar, presence_implies, presence_or, presence_xor,
+    all_present_or_all_absent, at_least_k_present, exactly_k_present
+)
+
+# Setup must run if main task runs
+setup = IntervalVar(size=5, optional=True, name="setup")
+main = IntervalVar(size=20, optional=True, name="main")
+satisfy(presence_implies(main, setup))
+
+# At least one delivery method must be chosen
+delivery_a = IntervalVar(size=30, optional=True, name="delivery_a")
+delivery_b = IntervalVar(size=45, optional=True, name="delivery_b")
+satisfy(presence_or(delivery_a, delivery_b))
+
+# Exactly one route must be taken
+route_a = IntervalVar(size=30, optional=True, name="route_a")
+route_b = IntervalVar(size=45, optional=True, name="route_b")
+satisfy(presence_xor(route_a, route_b))
+
+# All subtasks must run together or not at all
+subtasks = [IntervalVar(size=5, optional=True, name=f"sub_{i}") for i in range(3)]
+satisfy(all_present_or_all_absent(subtasks))
+
+# At least 3 of 5 tasks must be completed
+tasks = [IntervalVar(size=10, optional=True, name=f"t_{i}") for i in range(5)]
+satisfy(at_least_k_present(tasks, 3))
+
+# Exactly 2 workers must be assigned
+workers = [IntervalVar(size=480, optional=True, name=f"w_{i}") for i in range(4)]
+satisfy(exactly_k_present(workers, 2))
+```
+
+### Chain Constraints
+
+```python
+from pycsp3 import satisfy
+from pycsp3_scheduling import IntervalVar, chain, strict_chain
+
+# Assembly line: steps must execute in order
+steps = [IntervalVar(size=d, name=f"step_{i}") for i, d in enumerate([5, 10, 3, 8])]
+satisfy(chain(steps))
+
+# With minimum gap of 2 between each step
+satisfy(chain(steps, delays=2))
+
+# With variable gaps between steps
+satisfy(chain(steps, delays=[1, 2, 3]))
+
+# Back-to-back execution (no gaps)
+satisfy(strict_chain(steps))
 ```

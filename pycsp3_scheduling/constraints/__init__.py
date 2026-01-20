@@ -7,8 +7,9 @@ This module provides:
 - Sequence constraints: SeqNoOverlap, first, last, before, previous
 - Sequence consistency: same_sequence, same_common_subsequence
 - Cumulative constraints: Cumulative (capacity constraint)
-- State constraints: always_equal, always_constant, always_no_state (future)
-- Forbidden region constraints: forbid_start, forbid_end, forbid_extent (future)
+- Forbidden time constraints: forbid_start, forbid_end, forbid_extent
+- Presence constraints: presence_implies, presence_or, presence_xor, etc.
+- Chain constraints: chain, strict_chain
 """
 
 from __future__ import annotations
@@ -49,13 +50,31 @@ from pycsp3_scheduling.constraints.cumulative import (
     build_cumul_constraint,
 )
 
-# To be implemented:
-# from pycsp3_scheduling.constraints.state import (
-#     always_in, always_equal, always_constant, always_no_state,
-# )
-# from pycsp3_scheduling.constraints.forbidden import (
-#     forbid_start, forbid_end, forbid_extent,
-# )
+# Forbidden time constraints
+from pycsp3_scheduling.constraints.forbidden import (
+    forbid_end,
+    forbid_extent,
+    forbid_start,
+)
+
+# Presence constraints
+from pycsp3_scheduling.constraints.presence import (
+    all_present_or_all_absent,
+    at_least_k_present,
+    at_most_k_present,
+    exactly_k_present,
+    if_present_then,
+    presence_implies,
+    presence_or,
+    presence_or_all,
+    presence_xor,
+)
+
+# Chain constraints
+from pycsp3_scheduling.constraints.chain import (
+    chain,
+    strict_chain,
+)
 
 __all__ = [
     # Exact timing constraints
@@ -84,4 +103,21 @@ __all__ = [
     # Cumulative constraints
     "SeqCumulative",
     "build_cumul_constraint",
+    # Forbidden time constraints
+    "forbid_start",
+    "forbid_end",
+    "forbid_extent",
+    # Presence constraints
+    "presence_implies",
+    "presence_or",
+    "presence_or_all",
+    "presence_xor",
+    "all_present_or_all_absent",
+    "if_present_then",
+    "at_least_k_present",
+    "at_most_k_present",
+    "exactly_k_present",
+    # Chain constraints
+    "chain",
+    "strict_chain",
 ]
