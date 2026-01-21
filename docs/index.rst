@@ -46,10 +46,11 @@ Quick Example
        print(f"task1: {interval_value(task1)}")
        print(f"task2: {interval_value(task2)}")
 
-Getting Started
----------------
+.. Getting Started
+.. ---------------
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
    :caption: User Guide
 
@@ -60,10 +61,11 @@ Getting Started
    user_guide/modeling_guide
 
 
-API Reference
--------------
+.. API Reference
+.. -------------
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
    :caption: API Documentation
 
@@ -73,10 +75,11 @@ API Reference
    api/functions
    api/interop
 
-Examples
---------
+.. Examples
+.. --------
 
 .. toctree::
+   :hidden:
    :maxdepth: 1
    :caption: Examples
 
@@ -85,22 +88,23 @@ Examples
    examples/rcpsp.ipynb
    examples/vrptw.ipynb
 
-Additional Resources
---------------------
+.. Additional Resources
+.. --------------------
 
 .. toctree::
+   :hidden:
    :maxdepth: 1
    :caption: Resources
 
    changelog
    contributing
 
-Indices and tables
-==================
+.. Indices and tables
+.. ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`
 
 
 Links
