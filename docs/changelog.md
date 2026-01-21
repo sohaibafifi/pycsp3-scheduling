@@ -5,7 +5,7 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### WIP
+### [0.3.0] - 2026-01-21
 
   - Renamed `type_of_next`/`type_of_prev` to `next_arg`/`prev_arg` (old names still work as aliases)
   - **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
