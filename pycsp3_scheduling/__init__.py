@@ -2,22 +2,26 @@
 pycsp3-scheduling: Scheduling extension for pycsp3.
 
 This package extends pycsp3 with comprehensive scheduling support including:
-- Interval variables (IntervalVar)
-- Sequence variables (SequenceVar)
-- Precedence constraints (end_before_start, start_at_start, etc.)
-- Grouping constraints (span, alternative, synchronize)
-- Sequence constraints (SeqNoOverlap, first, last, before, previous)
-- Sequence consistency constraints (same_sequence, same_common_subsequence)
-- Sequence accessor expressions (start_of_next, start_of_prev, etc.)
-- Cumulative functions (pulse, step_at_start, step_at_end, Cumulative)
-- State functions (StateFunction, TransitionMatrix, always_equal, etc.)
-- XCSP3 scheduling extension output [future]
+- **Interval Variables**: Represent tasks/activities with start, end, size, length, and optional presence
+- **Intensity Functions**: Stepwise intensity metadata with granularity scaling for size/length
+- **Sequence Variables**: Ordered sequences of intervals on disjunctive resources
+- **Precedence Constraints**: `end_before_start`, `start_at_start`, etc.
+- **Grouping Constraints**: `span`, `alternative`, `synchronize`
+- **Sequence Constraints**: `SeqNoOverlap`, `first`, `last`, `before`, `previous`, `same_sequence`
+- **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
+- **Presence Constraints**: `presence_implies`, `presence_or`, `presence_xor`, `chain`
+- **Overlap Constraints**: `must_overlap`, `overlap_at_least`, `disjunctive`
+- **Aggregate Expressions**: `count_present`, `earliest_start`, `latest_end`, `makespan`
+- **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
+- **State Functions**: Model resource states with transitions
+- **XCSP3 Extension**: Output scheduling models in extended XCSP3 format
+- **Visualization**: Gantt charts and resource profiles
 
 """
 
 from __future__ import annotations
 
-__version__ = "0.2.3"
+__version__ = "0.3.1"
 __author__ = "Sohaib AFIFI"
 
 # Variables
