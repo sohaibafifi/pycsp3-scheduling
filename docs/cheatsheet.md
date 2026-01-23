@@ -155,6 +155,13 @@ satisfy(disjunctive(tasks, transition_times=matrix))  # with transition times
 satisfy(release_date(task, 8))                        # cannot start before time 8
 satisfy(deadline(task, 50))                           # must finish by time 50
 satisfy(time_window(task, earliest_start=8, latest_end=50))  # combined
+
+# Operator syntax (shorthand)
+satisfy(task >= 8)                                    # same as release_date(task, 8)
+satisfy(task <= 50)                                   # same as deadline(task, 50)
+satisfy(task > 5)                                     # start strictly after 5
+satisfy(task < 60)                                    # end strictly before 60
+satisfy(t >= 0 for t in tasks)                        # all tasks start at or after 0
 ```
 
 ### State Helpers

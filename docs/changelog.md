@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `requires_state(interval, state_func, state)` - interval requires specific state (simpler API for always_equal)
   - `sets_state(interval, state_func, before_state, after_state)` - interval transitions state
 
+- **IntervalVar Comparison Operators**
+  - `interval >= time` - shorthand for `release_date(interval, time)`
+  - `interval <= time` - shorthand for `deadline(interval, time)`
+  - `interval > time` - strict release (start > time)
+  - `interval < time` - strict deadline (end < time)
+  - Works in list comprehensions: `satisfy(t >= 0 for t in tasks)`
+
 ### Changed
 
 - Consolidated internal validation functions into `_pycsp3.py` to reduce code duplication

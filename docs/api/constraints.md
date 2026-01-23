@@ -409,6 +409,17 @@ satisfy(time_window(task, earliest_start=540, latest_end=1020))
 # Works with optional intervals too
 optional_task = IntervalVar(size=30, optional=True, name="optional_delivery")
 satisfy(time_window(optional_task, earliest_start=540, latest_end=1020))
+
+# Operator syntax (shorthand) - more concise!
+satisfy(task >= 540)           # same as release_date(task, 540)
+satisfy(task <= 1020)          # same as deadline(task, 1020)
+satisfy(task > 500)            # start strictly after 500
+satisfy(task < 1100)           # end strictly before 1100
+
+# Works great in list comprehensions
+tasks = [IntervalVar(size=30, name=f"task_{i}") for i in range(5)]
+satisfy(t >= 0 for t in tasks)      # all tasks start at or after 0
+satisfy(t <= 1000 for t in tasks)   # all tasks end by time 1000
 ```
 
 ### State Helpers

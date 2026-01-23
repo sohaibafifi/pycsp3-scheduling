@@ -277,6 +277,10 @@ minimize(Maximum(end_time(t) for t in tasks))
 | `release_date(interval, time)` | Interval cannot start before given time |
 | `deadline(interval, time)` | Interval must complete by given time |
 | `time_window(interval, earliest_start, latest_end)` | Combined release + deadline |
+| `interval >= time` | Operator shorthand for release_date |
+| `interval <= time` | Operator shorthand for deadline |
+| `interval > time` | Strict release: `start(interval) > time` |
+| `interval < time` | Strict deadline: `end(interval) < time` |
 
 ### State Helpers
 

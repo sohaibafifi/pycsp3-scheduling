@@ -178,6 +178,110 @@ class TestTimeWindow:
             time_window(task, earliest_start=50, latest_end=8)
 
 
+class TestIntervalOperators:
+    """Tests for IntervalVar comparison operators."""
+
+    def test_le_operator(self):
+        """task <= 50 returns deadline constraint."""
+        task = IntervalVar(size=10, name="task")
+
+        ctrs = task <= 50
+
+        assert isinstance(ctrs, list)
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.LE
+
+    def test_lt_operator(self):
+        """task < 50 returns strict deadline constraint."""
+        task = IntervalVar(size=10, name="task")
+
+        ctrs = task < 50
+
+        assert isinstance(ctrs, list)
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.LT
+
+    def test_ge_operator(self):
+        """task >= 10 returns release_date constraint."""
+        task = IntervalVar(size=10, name="task")
+
+        ctrs = task >= 10
+
+        assert isinstance(ctrs, list)
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.GE
+
+    def test_gt_operator(self):
+        """task > 10 returns strict release constraint."""
+        task = IntervalVar(size=10, name="task")
+
+        ctrs = task > 10
+
+        assert isinstance(ctrs, list)
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.GT
+
+    def test_optional_interval_le(self):
+        """Operators handle optional intervals."""
+        task = IntervalVar(size=10, optional=True, name="task")
+
+        ctrs = task <= 50
+
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.OR
+
+    def test_optional_interval_ge(self):
+        """Operators handle optional intervals."""
+        task = IntervalVar(size=10, optional=True, name="task")
+
+        ctrs = task >= 10
+
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.OR
+
+    def test_optional_interval_lt(self):
+        """Strict operators handle optional intervals."""
+        task = IntervalVar(size=10, optional=True, name="task")
+
+        ctrs = task < 50
+
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.OR
+
+    def test_optional_interval_gt(self):
+        """Strict operators handle optional intervals."""
+        task = IntervalVar(size=10, optional=True, name="task")
+
+        ctrs = task > 10
+
+        assert len(ctrs) == 1
+        assert ctrs[0].type == TypeNode.OR
+
+    def test_operator_with_non_int_raises_typeerror(self):
+        """Operators raise TypeError for non-int."""
+        task = IntervalVar(size=10, name="task")
+
+        with pytest.raises(TypeError):
+            task <= "50"
+        with pytest.raises(TypeError):
+            task >= "10"
+        with pytest.raises(TypeError):
+            task < 50.5
+        with pytest.raises(TypeError):
+            task > 10.5
+
+    def test_reverse_operators(self):
+        """Test reverse operators (int on left side)."""
+        from pycsp3 import satisfy
+
+        task = IntervalVar(size=10, name="task")
+
+        # 10 <= task should work via task.__ge__(10)
+        satisfy(10 <= task)
+        # 50 >= task should work via task.__le__(50)
+        satisfy(50 >= task)
+
+
 class TestBoundsIntegration:
     """Integration tests for bounds constraints with pycsp3."""
 
@@ -217,3 +321,25 @@ class TestBoundsIntegration:
             chain(tasks),
             *[time_window(t, earliest_start=0, latest_end=100) for t in tasks],
         )
+
+    def test_satisfy_with_operators(self):
+        """Test using comparison operators directly in satisfy()."""
+        from pycsp3 import satisfy
+
+        task = IntervalVar(size=10, name="task")
+
+        # Using operators instead of release_date/deadline
+        satisfy(task >= 10)  # release
+        satisfy(task <= 50)  # deadline
+        satisfy(task > 5)    # strict release
+        satisfy(task < 60)   # strict deadline
+
+    def test_satisfy_with_operator_list(self):
+        """Test using operators in a list comprehension."""
+        from pycsp3 import satisfy
+
+        tasks = [IntervalVar(size=10, name=f"t{i}") for i in range(3)]
+
+        # All tasks must start after time 0 and end before time 100
+        satisfy(t >= 0 for t in tasks)
+        satisfy(t <= 100 for t in tasks)

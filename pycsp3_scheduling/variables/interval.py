@@ -276,6 +276,106 @@ class IntervalVar:
             return NotImplemented
         return self._id == other._id
 
+    def __le__(self, other: object) -> list:
+        """
+        Deadline constraint: interval must end by given time.
+
+        Args:
+            other: Integer time value.
+
+        Returns:
+            List of constraint nodes for satisfy().
+
+        Example:
+            >>> satisfy(task <= 50)  # task must end by time 50
+        """
+        if not isinstance(other, int):
+            return NotImplemented
+        from pycsp3_scheduling.constraints.bounds import deadline
+        return deadline(self, other)
+
+    def __lt__(self, other: object) -> list:
+        """
+        Strict deadline constraint: interval must end before given time.
+        This can be simplified by using deadline with (time - 1).
+
+        Args:
+            other: Integer time value.
+
+        Returns:
+            List of constraint nodes for satisfy().
+
+        Example:
+            >>> satisfy(task < 50)  # task must end before time 50
+        """
+        if not isinstance(other, int):
+            return NotImplemented
+        from pycsp3_scheduling.constraints._pycsp3 import (
+            _build_end_expr,
+            _get_node_builders,
+            presence_var,
+        )
+        Node, TypeNode = _get_node_builders()
+        end = _build_end_expr(self, Node, TypeNode)
+        constraint = Node.build(TypeNode.LT, end, other)
+
+        if self.optional:
+            pres = presence_var(self)
+            not_present = Node.build(TypeNode.EQ, pres, 0)
+            constraint = Node.build(TypeNode.OR, not_present, constraint)
+
+        return [constraint]
+
+    def __ge__(self, other: object) -> list:
+        """
+        Release date constraint: interval cannot start before given time.
+
+        Args:
+            other: Integer time value.
+
+        Returns:
+            List of constraint nodes for satisfy().
+
+        Example:
+            >>> satisfy(task >= 10)  # task cannot start before time 10
+        """
+        if not isinstance(other, int):
+            return NotImplemented
+        from pycsp3_scheduling.constraints.bounds import release_date
+        return release_date(self, other)
+
+    def __gt__(self, other: object) -> list:
+        """
+        Strict release constraint: interval must start after given time.
+        This can be simplified by using release_date with (time + 1).
+
+        Args:
+            other: Integer time value.
+
+        Returns:
+            List of constraint nodes for satisfy().
+
+        Example:
+            >>> satisfy(task > 10)  # task must start after time 10
+        """
+        if not isinstance(other, int):
+            return NotImplemented
+        from pycsp3_scheduling.constraints._pycsp3 import (
+            _get_node_builders,
+            presence_var,
+            start_var,
+        )
+        Node, TypeNode = _get_node_builders()
+        start = start_var(self)
+        constraint = Node.build(TypeNode.GT, start, other)
+
+        if self.optional:
+            pres = presence_var(self)
+            not_present = Node.build(TypeNode.EQ, pres, 0)
+            constraint = Node.build(TypeNode.OR, not_present, constraint)
+
+        return [constraint]
+
     def __repr__(self) -> str:
         """String representation."""
         parts = [f"IntervalVar({self.name!r}"]
