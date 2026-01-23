@@ -149,6 +149,22 @@ satisfy(disjunctive(tasks))                           # unary resource (at most 
 satisfy(disjunctive(tasks, transition_times=matrix))  # with transition times
 ```
 
+### Bounds Constraints
+
+```python
+satisfy(release_date(task, 8))                        # cannot start before time 8
+satisfy(deadline(task, 50))                           # must finish by time 50
+satisfy(time_window(task, earliest_start=8, latest_end=50))  # combined
+```
+
+### State Helpers
+
+```python
+satisfy(requires_state(task, machine, 2))             # task requires machine in state 2
+satisfy(sets_state(preheat, oven, before_state=0, after_state=2))  # transition
+satisfy(sets_state(cooldown, oven, before_state=None, after_state=0))  # any -> cold
+```
+
 ### Aggregate Expressions
 
 ```python

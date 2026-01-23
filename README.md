@@ -13,6 +13,7 @@ Scheduling extension for [pycsp3](https://pycsp.org) with interval variables, se
 - **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
 - **Presence Constraints**: `presence_implies`, `presence_or`, `presence_xor`, `chain`
 - **Overlap Constraints**: `must_overlap`, `overlap_at_least`, `disjunctive`
+- **Bounds Constraints**: `release_date`, `deadline`, `time_window`
 - **Aggregate Expressions**: `count_present`, `earliest_start`, `latest_end`, `makespan`
 - **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
 - **State Functions**: Model resource states with transitions
@@ -268,6 +269,21 @@ minimize(Maximum(end_time(t) for t in tasks))
 | `overlap_at_least(a, b, min_overlap)` | Intervals must overlap by at least min_overlap |
 | `no_overlap_pairwise(intervals)` | Simple pairwise no-overlap |
 | `disjunctive(intervals, transition_times)` | Unary resource (at most one active) |
+
+### Bounds Constraints
+
+| Constraint | Description |
+|------------|-------------|
+| `release_date(interval, time)` | Interval cannot start before given time |
+| `deadline(interval, time)` | Interval must complete by given time |
+| `time_window(interval, earliest_start, latest_end)` | Combined release + deadline |
+
+### State Helpers
+
+| Function | Description |
+|----------|-------------|
+| `requires_state(interval, state_func, state)` | Interval requires specific state (convenience for always_equal) |
+| `sets_state(interval, state_func, before, after)` | Interval transitions state from before to after |
 
 ### Aggregate Expressions
 

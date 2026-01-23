@@ -139,6 +139,26 @@ Scheduling constraints for interval and sequence variables.
 .. autofunction:: pycsp3_scheduling.constraints.overlap.disjunctive
 ```
 
+## Bounds Constraints
+
+```{eval-rst}
+.. module:: pycsp3_scheduling.constraints.bounds
+   :synopsis: Bounds constraints for interval variables
+```
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.constraints.bounds.release_date
+.. autofunction:: pycsp3_scheduling.constraints.bounds.deadline
+.. autofunction:: pycsp3_scheduling.constraints.bounds.time_window
+```
+
+## State Helpers
+
+```{eval-rst}
+.. autofunction:: pycsp3_scheduling.functions.state_functions.requires_state
+.. autofunction:: pycsp3_scheduling.functions.state_functions.sets_state
+```
+
 ## Aggregate Expressions
 
 ```{eval-rst}
@@ -365,6 +385,54 @@ satisfy(disjunctive(tasks))
 # Disjunctive with transition times between types
 transition = [[0, 5], [3, 0]]
 satisfy(disjunctive(tasks, transition_times=transition))
+```
+
+### Bounds Constraints
+
+```python
+from pycsp3 import satisfy
+from pycsp3_scheduling import (
+    IntervalVar, release_date, deadline, time_window
+)
+
+task = IntervalVar(size=30, name="delivery")
+
+# Task cannot start before 9am (time 540 in minutes)
+satisfy(release_date(task, 540))
+
+# Task must complete by 5pm (time 1020 in minutes)
+satisfy(deadline(task, 1020))
+
+# Combined: task must execute within business hours
+satisfy(time_window(task, earliest_start=540, latest_end=1020))
+
+# Works with optional intervals too
+optional_task = IntervalVar(size=30, optional=True, name="optional_delivery")
+satisfy(time_window(optional_task, earliest_start=540, latest_end=1020))
+```
+
+### State Helpers
+
+```python
+from pycsp3 import satisfy
+from pycsp3_scheduling import (
+    IntervalVar, StateFunction, requires_state, sets_state
+)
+
+# Create a state function for oven temperature
+oven = StateFunction(name="oven_temp")
+
+# Baking task requires oven at temperature state 2
+bake = IntervalVar(size=30, name="bake")
+satisfy(requires_state(bake, oven, 2))
+
+# Preheat task transitions oven from cold (0) to hot (2)
+preheat = IntervalVar(size=15, name="preheat")
+satisfy(sets_state(preheat, oven, before_state=0, after_state=2))
+
+# Cooldown task transitions oven from any state to cold
+cooldown = IntervalVar(size=20, name="cooldown")
+satisfy(sets_state(cooldown, oven, before_state=None, after_state=0))
 ```
 
 ### Aggregate Expressions

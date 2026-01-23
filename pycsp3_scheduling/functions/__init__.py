@@ -46,6 +46,8 @@ from pycsp3_scheduling.functions.state_functions import (
     always_no_state,
     clear_state_function_registry,
     get_registered_state_functions,
+    requires_state,
+    sets_state,
 )
 
 # Re-export always_in with smart dispatch
@@ -101,6 +103,9 @@ __all__ = [
     "always_equal",
     "always_constant",
     "always_no_state",
+    # State helpers
+    "requires_state",
+    "sets_state",
     # State registry
     "get_registered_state_functions",
     "clear_state_function_registry",

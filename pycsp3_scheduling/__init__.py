@@ -11,6 +11,7 @@ This package extends pycsp3 with comprehensive scheduling support including:
 - **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`
 - **Presence Constraints**: `presence_implies`, `presence_or`, `presence_xor`, `chain`
 - **Overlap Constraints**: `must_overlap`, `overlap_at_least`, `disjunctive`
+- **Bounds Constraints**: `release_date`, `deadline`, `time_window`
 - **Aggregate Expressions**: `count_present`, `earliest_start`, `latest_end`, `makespan`
 - **Cumulative Functions**: `pulse`, `step_at_start`, `step_at_end` for resource modeling
 - **State Functions**: Model resource states with transitions
@@ -21,7 +22,7 @@ This package extends pycsp3 with comprehensive scheduling support including:
 
 from __future__ import annotations
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 __author__ = "Sohaib AFIFI"
 
 # Variables
@@ -90,6 +91,7 @@ from pycsp3_scheduling.constraints import (
     at_most_k_present,
     before,
     chain,
+    deadline,
     disjunctive,
     end_at_end,
     end_at_start,
@@ -110,6 +112,7 @@ from pycsp3_scheduling.constraints import (
     presence_or_all,
     presence_xor,
     previous,
+    release_date,
     same_common_subsequence,
     same_sequence,
     span,
@@ -119,6 +122,7 @@ from pycsp3_scheduling.constraints import (
     start_before_start,
     strict_chain,
     synchronize,
+    time_window,
 )
 
 # Cumulative Functions
@@ -145,6 +149,8 @@ from pycsp3_scheduling.functions import (
     always_constant,
     always_equal,
     always_no_state,
+    requires_state,
+    sets_state,
 )
 
 # Visualization (imported as submodule)
@@ -250,6 +256,10 @@ __all__ = [
     "overlap_at_least",
     "no_overlap_pairwise",
     "disjunctive",
+    # Constraints - Bounds
+    "release_date",
+    "deadline",
+    "time_window",
     # Cumulative Functions
     "CumulExpr",
     "CumulFunction",
@@ -270,6 +280,8 @@ __all__ = [
     "always_equal",
     "always_constant",
     "always_no_state",
+    "requires_state",
+    "sets_state",
     # Visualization
     "visu",
 ]

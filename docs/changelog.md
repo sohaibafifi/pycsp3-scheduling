@@ -5,7 +5,28 @@ All notable changes to pycsp3-scheduling will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### [0.3.0] - 2026-01-21
+## [0.4.0] - 2026-01-23
+
+### Added
+
+- **Bounds Constraints**: `release_date`, `deadline`, `time_window`
+  - Convenience constraints for setting time bounds on intervals
+  - `release_date(interval, time)` - interval cannot start before given time
+  - `deadline(interval, time)` - interval must complete by given time
+  - `time_window(interval, earliest_start, latest_end)` - combined release + deadline
+  - Properly handles optional intervals with presence escape clauses
+
+- **State Helpers**: `requires_state`, `sets_state`
+  - Convenience functions for working with state functions
+  - `requires_state(interval, state_func, state)` - interval requires specific state (simpler API for always_equal)
+  - `sets_state(interval, state_func, before_state, after_state)` - interval transitions state
+
+### Changed
+
+- Consolidated internal validation functions into `_pycsp3.py` to reduce code duplication
+- Test files renamed to follow module-based naming convention
+
+## [0.3.0] - 2026-01-21
 
   - Renamed `type_of_next`/`type_of_prev` to `next_arg`/`prev_arg` (old names still work as aliases)
   - **Forbidden Time Constraints**: `forbid_start`, `forbid_end`, `forbid_extent`

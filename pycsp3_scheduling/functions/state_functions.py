@@ -492,3 +492,109 @@ def clear_state_function_registry() -> None:
     _state_function_registry.clear()
     StateFunction._id_counter = 0
     TransitionMatrix._id_counter = 0
+
+
+# =============================================================================
+# Convenience State Helpers
+# =============================================================================
+
+
+def requires_state(
+    interval: IntervalVar,
+    state_func: StateFunction,
+    required_state: int,
+) -> StateConstraint:
+    """
+    Simplified constraint that interval requires a specific state.
+
+    This is a convenience wrapper around always_equal with a more intuitive
+    parameter order (interval first, like other constraint functions).
+
+    Args:
+        interval: The interval requiring the state.
+        state_func: The state function (resource).
+        required_state: The required state value.
+
+    Returns:
+        A StateConstraint representing the requirement.
+
+    Example:
+        >>> oven = StateFunction(name="oven_temp")
+        >>> bake_task = IntervalVar(size=30, name="bake")
+        >>> # Baking requires oven at temperature state 2 (e.g., 350F)
+        >>> satisfy(requires_state(bake_task, oven, 2))
+    """
+    return always_equal(state_func, interval, required_state)
+
+
+def sets_state(
+    interval: IntervalVar,
+    state_func: StateFunction,
+    before_state: int | None,
+    after_state: int,
+) -> list[StateConstraint]:
+    """
+    Interval transitions the state from one value to another.
+
+    This constraint models a task that changes the state of a resource.
+    The state must be `before_state` when the interval starts (if specified),
+    and becomes `after_state` when the interval ends.
+
+    Args:
+        interval: The interval performing the state change.
+        state_func: The state function.
+        before_state: Required state before interval (None = any state).
+        after_state: State after interval completes.
+
+    Returns:
+        List of StateConstraints representing the state transition.
+
+    Example:
+        >>> machine_mode = StateFunction(name="machine_mode")
+        >>> changeover = IntervalVar(size=15, name="changeover_A_to_B")
+        >>> # This changeover task transitions machine from mode A (0) to mode B (1)
+        >>> satisfy(sets_state(changeover, machine_mode, before_state=0, after_state=1))
+    """
+    from pycsp3_scheduling.variables.interval import IntervalVar
+
+    if not isinstance(state_func, StateFunction):
+        raise TypeError(
+            f"state_func must be a StateFunction, got {type(state_func).__name__}"
+        )
+    if not isinstance(interval, IntervalVar):
+        raise TypeError(
+            f"interval must be an IntervalVar, got {type(interval).__name__}"
+        )
+    if not isinstance(after_state, int):
+        raise TypeError(f"after_state must be an int, got {type(after_state).__name__}")
+    if before_state is not None and not isinstance(before_state, int):
+        raise TypeError(f"before_state must be an int or None, got {type(before_state).__name__}")
+
+    constraints = []
+
+    # If before_state is specified, require that state at start
+    if before_state is not None:
+        constraints.append(
+            StateConstraint(
+                state_func=state_func,
+                interval=interval,
+                constraint_type=StateConstraintType.ALWAYS_EQUAL,
+                value=before_state,
+                is_start_aligned=True,
+                is_end_aligned=False,  # Only at start
+            )
+        )
+
+    # After interval, state becomes after_state
+    constraints.append(
+        StateConstraint(
+            state_func=state_func,
+            interval=interval,
+            constraint_type=StateConstraintType.ALWAYS_EQUAL,
+            value=after_state,
+            is_start_aligned=False,  # Only at end
+            is_end_aligned=True,
+        )
+    )
+
+    return constraints
