@@ -99,9 +99,21 @@ These functions access properties of neighboring intervals in a sequence.
    :synopsis: Element expressions for array indexing
 ```
 
+### ElementArray
+
+A 1D array wrapper that supports transparent `array[variable]` indexing syntax.
+
+```{eval-rst}
+.. autoclass:: pycsp3_scheduling.expressions.element.ElementArray
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
 ### ElementMatrix
 
 A 2D matrix that supports indexing with pycsp3 expressions, similar to CP Optimizer's `IloNumArray2`.
+Supports both `M[i, j]` (tuple) and `M[i][j]` (chained) syntax.
 
 ```{eval-rst}
 .. autoclass:: pycsp3_scheduling.expressions.element.ElementMatrix
@@ -244,6 +256,26 @@ print(M.absent_type)       # 4 (column index for absent)
 print(M.get_value(0, 1))        # 10 (travel from 0 to 1)
 print(M.get_value(1, M.last_type))  # 18 (return from 1 to depot)
 
-# Use with expressions for element constraints
-cost = M[id_i, next_arg(route, interval, M.last_type, M.absent_type)]
+# Use with expressions - both syntaxes work
+cost = M[id_i, next_arg(route, interval, M.last_type, M.absent_type)]  # tuple
+cost = M[id_i][next_arg(route, interval, M.last_type, M.absent_type)]  # chained
+```
+
+### ElementArray for Simple Array Indexing
+
+```python
+from pycsp3_scheduling import ElementArray
+
+# Create an array with transparent variable indexing
+costs = ElementArray([10, 20, 30, 40, 50])
+
+# Integer indexing - returns value directly
+costs[2]  # → 30
+
+# Variable indexing - returns pycsp3 element expression
+idx = next_arg(route, interval)
+cost = costs[idx]  # Creates element constraint automatically
+
+# Use in objective
+minimize(Sum(costs[type_of_next(route, v)] for v in visits))
 ```

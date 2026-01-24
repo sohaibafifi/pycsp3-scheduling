@@ -40,6 +40,7 @@ from pycsp3_scheduling.expressions.sequence_expr import (
 )
 
 from pycsp3_scheduling.expressions.element import (
+    ElementArray,
     ElementMatrix,
     element,
     element2d,
@@ -81,6 +82,7 @@ __all__ = [
     "length_of_prev",
     "type_of_prev",
     # Element expressions (array indexing with variables)
+    "ElementArray",
     "ElementMatrix",
     "element",
     "element2d",

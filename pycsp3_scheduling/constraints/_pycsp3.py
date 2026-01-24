@@ -476,10 +476,7 @@ def _post_intensity_constraint(interval: IntervalVar, horizon: int) -> None:
 
     # Import pycsp3 functions for posting constraints
     # pycsp3 uses Table() for table/extension constraints
-    try:
-        from pycsp3 import Table, satisfy
-    except ImportError:
-        return
+    from pycsp3 import Table, satisfy
 
     # Compute the discretized table
     table = _compute_intensity_table(interval, horizon)

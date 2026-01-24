@@ -78,11 +78,8 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
             _sequence_present_count_vars[sequence._id],
         )
 
-    try:
-        from pycsp3 import AllDifferent, Var, satisfy
-        from pycsp3.classes.nodes import Node, TypeNode
-    except ImportError:
-        raise ImportError("pycsp3 is required for sequence position variables")
+    from pycsp3 import AllDifferent, Var, satisfy
+    from pycsp3.classes.nodes import Node, TypeNode
 
     from pycsp3_scheduling.constraints._pycsp3 import (
         start_var,
@@ -417,11 +414,8 @@ def _build_next_arg_var(
     - The successor index is the interval at position +1, or a last/absent marker.
     - Use an element constraint to map successor index to ID values.
     """
-    try:
-        from pycsp3 import Var, satisfy
-        from pycsp3.classes.nodes import Node, TypeNode
-    except ImportError:
-        raise ImportError("pycsp3 is required for next_arg")
+    from pycsp3 import Var, satisfy
+    from pycsp3.classes.nodes import Node, TypeNode
 
     from pycsp3_scheduling.constraints._pycsp3 import (
         presence_var,
@@ -738,12 +732,9 @@ def _build_prev_arg_var(
     """
     Build a pycsp3 variable for prev_arg with appropriate constraints.
     """
-    try:
-        from pycsp3 import Var, satisfy
-        from pycsp3.classes.nodes import Node, TypeNode
-    except ImportError:
-        raise ImportError("pycsp3 is required for prev_arg")
-    
+    from pycsp3 import Var, satisfy
+    from pycsp3.classes.nodes import Node, TypeNode
+
     from pycsp3_scheduling.constraints._pycsp3 import (
         presence_var,
     )

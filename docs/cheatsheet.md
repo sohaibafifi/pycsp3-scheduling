@@ -224,6 +224,29 @@ satisfy(end_time(opt) <= 100)
 satisfy(presence_time(opt) == 1)
 ```
 
+### Element Expressions (Array Indexing with Variables)
+
+```python
+from pycsp3_scheduling import ElementArray, ElementMatrix
+
+# 1D Array - transparent variable indexing
+costs = ElementArray([10, 20, 30, 40, 50])
+costs[2]           # → 30 (integer index)
+costs[var_index]   # → element expression (variable index)
+
+# 2D Matrix for VRPTW with special boundary values
+M = ElementMatrix(
+    matrix=travel_times,         # [from][to] distances
+    last_value=depot_distances,  # Cost when interval is last
+    absent_value=0,              # Cost when interval is absent
+)
+M[i, j]       # tuple syntax
+M[i][j]       # chained syntax (both work with variables)
+
+# Use with next_arg for distance objectives
+cost = M[type_i][next_arg(route, interval, M.last_type, M.absent_type)]
+```
+
 ## 4) Specifying an Objective
 
 ```python

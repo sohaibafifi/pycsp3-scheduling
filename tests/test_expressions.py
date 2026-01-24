@@ -397,3 +397,114 @@ class TestPrevArg:
 
         with pytest.raises(TypeError, match="requires a SequenceVar"):
             prev_arg([t1, t2], t1)
+
+
+class TestElementArray:
+    """Tests for ElementArray with transparent indexing."""
+
+    def test_creation(self):
+        """Test ElementArray creation."""
+        from pycsp3_scheduling.expressions import ElementArray
+
+        arr = ElementArray([10, 20, 30, 40, 50])
+        assert len(arr) == 5
+        assert arr.data == [10, 20, 30, 40, 50]
+
+    def test_integer_indexing(self):
+        """Test indexing with integer constants."""
+        from pycsp3_scheduling.expressions import ElementArray
+
+        arr = ElementArray([10, 20, 30, 40, 50])
+        assert arr[0] == 10
+        assert arr[2] == 30
+        assert arr[-1] == 50
+
+    def test_iteration(self):
+        """Test iteration over ElementArray."""
+        from pycsp3_scheduling.expressions import ElementArray
+
+        arr = ElementArray([10, 20, 30])
+        values = list(arr)
+        assert values == [10, 20, 30]
+
+    def test_repr(self):
+        """Test string representation."""
+        from pycsp3_scheduling.expressions import ElementArray
+
+        arr = ElementArray([10, 20, 30])
+        assert repr(arr) == "ElementArray([10, 20, 30])"
+
+    def test_empty_array_raises(self):
+        """Test that empty arrays are rejected."""
+        from pycsp3_scheduling.expressions import ElementArray
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            ElementArray([])
+
+
+class TestElementMatrixChainedIndexing:
+    """Tests for ElementMatrix with M[i][j] chained indexing."""
+
+    def test_creation(self):
+        """Test ElementMatrix creation."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2, 3], [4, 5, 6]])
+        assert m.n_rows == 2
+        assert m.n_cols == 3
+
+    def test_tuple_indexing(self):
+        """Test tuple indexing m[row, col]."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]])
+        assert m[0, 1] == 2
+        assert m[1, 0] == 3
+
+    def test_chained_indexing(self):
+        """Test chained indexing m[row][col]."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]])
+        assert m[0][1] == 2
+        assert m[1][0] == 3
+
+    def test_last_value_access(self):
+        """Test access to last_value column via chained indexing."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]], last_value=99, absent_value=0)
+        # last_type is at column index n_cols = 2
+        assert m.get_value(0, m.last_type) == 99
+        assert m.get_value(1, m.last_type) == 99
+
+    def test_absent_value_access(self):
+        """Test access to absent_value column."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]], last_value=0, absent_value=-1)
+        # absent_type is at column index n_cols + 1 = 3
+        assert m.get_value(0, m.absent_type) == -1
+        assert m.get_value(1, m.absent_type) == -1
+
+    def test_per_row_last_value(self):
+        """Test per-row last values."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]], last_value=[10, 20])
+        assert m.get_value(0, m.last_type) == 10
+        assert m.get_value(1, m.last_type) == 20
+
+    def test_empty_matrix_raises(self):
+        """Test that empty matrices are rejected."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            ElementMatrix([])
+
+    def test_non_rectangular_raises(self):
+        """Test that non-rectangular matrices are rejected."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        with pytest.raises(ValueError, match="must be rectangular"):
+            ElementMatrix([[1, 2], [3]])

@@ -2,22 +2,24 @@
 Element expressions for array indexing with variable indices.
 
 This module provides the ability to index into arrays using expressions
-(like type_of_next), similar to CP Optimizer's IloNumArray2 pattern.
+(like next_arg).
 
 The key use case is building objectives like:
-    sum(M[type_i][type_of_next(route, visit[i], last, abs)] for i in intervals)
+    sum(M[type_i][next_arg(route, visit[i], last, abs)] for i in intervals)
 
 Where M is a transition cost matrix indexed by interval types.
+
+Also provides ElementArray for transparent array[variable_index] syntax:
+    costs = ElementArray([10, 20, 30, 40, 50])
+    idx = next_arg(route, interval)
+    cost = costs[idx]  # Automatically creates element expression
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Sequence, Union
-
-if TYPE_CHECKING:
-    from pycsp3_scheduling.variables.interval import IntervalVar
-    from pycsp3_scheduling.variables.sequence import SequenceVar
+from typing import Any, overload
 
 
 @dataclass
@@ -27,7 +29,7 @@ class ElementMatrix:
 
     This class wraps a 2D list of values and provides element-style indexing
     where indices can be pycsp3 variables or expressions. It's designed to
-    work with type_of_next() for computing transition costs in scheduling.
+    work with next_arg() for computing transition costs in scheduling.
 
     The matrix supports two special values for boundary cases:
     - last_value: Used when an interval is the last in its sequence
@@ -40,11 +42,11 @@ class ElementMatrix:
             last_value=depot_distances,  # 1D list or scalar for return to depot
             absent_value=0,         # 0 cost if interval is absent
         )
-        
+
         # Objective: minimize total travel distance
         for k in vehicles:
             for i in intervals:
-                cost = M[type_i, type_of_next(route[k], visit[k][i])]
+                cost = M[type_i, next_arg(route[k], visit[k][i])]
 
     Attributes:
         matrix: 2D list of transition costs [from_type][to_type].
@@ -68,14 +70,14 @@ class ElementMatrix:
         """Validate and setup the matrix."""
         if not self.matrix:
             raise ValueError("Matrix cannot be empty")
-        
+
         # Validate rectangular matrix
         self._n_rows = len(self.matrix)
         self._n_cols = len(self.matrix[0])
         for row in self.matrix:
             if len(row) != self._n_cols:
                 raise ValueError("Matrix must be rectangular")
-        
+
         # Special type indices: last = n_cols, absent = n_cols + 1
         self._last_type = self._n_cols
         self._absent_type = self._n_cols + 1
@@ -138,17 +140,14 @@ class ElementMatrix:
         if self._flat_vars is not None:
             return
 
-        try:
-            from pycsp3 import VarArray
-        except ImportError:
-            raise ImportError("pycsp3 is required for element constraints")
+        from pycsp3 import VarArray
 
         # Build extended matrix with last/absent columns
         extended = self.build_extended_matrix()
-        
+
         # Flatten to 1D for element constraint
         flat = [val for row in extended for val in row]
-        
+
         # Create VarArray with singleton domains (constants)
         # Use a unique name based on id to avoid conflicts
         # Note: XCSP3 IDs must start with a letter, not underscore
@@ -159,34 +158,60 @@ class ElementMatrix:
             id=var_id,
         )
 
-    def __getitem__(self, indices: tuple) -> Any:
+    def __getitem__(self, index: int | tuple | Any) -> Any:
         """
         Index the matrix with expressions.
 
+        Supports two syntaxes:
+        - M[row, col] - tuple indexing
+        - M[row][col] - chained indexing (row returns a proxy)
+
         Args:
-            indices: Tuple of (row_index, col_index) where each can be:
-                     - An integer constant
-                     - A pycsp3 variable or expression
-                     - The result of type_of_next() etc.
+            index: Can be:
+                - tuple (row, col): Returns element at (row, col)
+                - int: Returns an _ElementMatrixRowProxy for chained indexing
+                - variable/expression: Returns a proxy for deferred column access
 
         Returns:
-            A pycsp3 element expression that evaluates to matrix[row][col].
+            - If tuple: A pycsp3 element expression for matrix[row][col]
+            - If int/variable: A proxy for M[row][col] chained access
 
         Example:
-            M = TransitionMatrix(travel_times)
-            cost = M[type_i, type_of_next(route, interval)]
+            M = ElementMatrix(travel_times, last_value=depot, absent_value=0)
+            cost = M[type_i, next_arg(route, interval)]  # tuple syntax
+            cost = M[type_i][next_arg(route, interval)]  # chained syntax
         """
-        if not isinstance(indices, tuple) or len(indices) != 2:
-            raise TypeError("TransitionMatrix requires 2D indexing: M[row, col]")
+        # Tuple indexing: M[row, col]
+        if isinstance(index, tuple):
+            if len(index) != 2:
+                raise TypeError("ElementMatrix requires 2D indexing: M[row, col]")
+            row_idx, col_idx = index
+            return self._get_element(row_idx, col_idx)
 
-        row_idx, col_idx = indices
+        # Single index - return proxy for chained access M[row][col]
+        return _ElementMatrixRowProxy(self, index)
+
+    def _get_element(self, row_idx: Any, col_idx: Any) -> Any:
+        """
+        Get element at (row, col) with variable or constant indices.
+
+        Args:
+            row_idx: Row index (int or pycsp3 variable/expression)
+            col_idx: Column index (int or pycsp3 variable/expression)
+
+        Returns:
+            Value if both indices are int, otherwise pycsp3 element expression.
+        """
+        # If both are constants, return value directly
+        if isinstance(row_idx, int) and isinstance(col_idx, int):
+            return self.get_value(row_idx, col_idx)
 
         # Ensure flat vars exist
         self._ensure_flat_vars()
 
         # Compute linear index: row * total_cols + col
         total_cols = self.total_cols
-        
+
         # Build the linear index expression
         try:
             linear_idx = row_idx * total_cols + col_idx
@@ -235,14 +260,10 @@ def element(array: Sequence, index: Any) -> Any:
 
     Example:
         costs = [10, 20, 30, 40, 50]
-        idx = type_of_next(route, interval)
-        cost = element(costs, idx)  # Returns costs[type_of_next(...)]
+        idx = next_arg(route, interval)
+        cost = element(costs, idx)  # Returns costs[next_arg(...)]
     """
-    try:
-        from pycsp3 import VarArray
-        from pycsp3.classes.main.variables import Variable
-    except ImportError:
-        raise ImportError("pycsp3 is required for element constraints")
+    from pycsp3 import VarArray
 
     # If index is a constant integer, just return the value
     if isinstance(index, int):
@@ -260,7 +281,7 @@ def element(array: Sequence, index: Any) -> Any:
         dom=lambda k: {int(array[k])},
         id=var_id,
     )
-    
+
     return var_array[index]
 
 
@@ -281,13 +302,10 @@ def element2d(matrix: Sequence[Sequence], row_idx: Any, col_idx: Any) -> Any:
     Example:
         travel = [[0, 10, 20], [10, 0, 15], [20, 15, 0]]
         i = type_of(interval_from)
-        j = type_of_next(route, interval_from)
+        j = next_arg(route, interval_from)
         cost = element2d(travel, i, j)
     """
-    try:
-        from pycsp3 import VarArray
-    except ImportError:
-        raise ImportError("pycsp3 is required for element constraints")
+    from pycsp3 import VarArray
 
     # If both indices are constants, return the value directly
     if isinstance(row_idx, int) and isinstance(col_idx, int):
@@ -311,3 +329,118 @@ def element2d(matrix: Sequence[Sequence], row_idx: Any, col_idx: Any) -> Any:
     linear_idx = row_idx * n_cols + col_idx
 
     return flat_vars[linear_idx]
+
+
+class ElementArray(Sequence):
+    """
+    A wrapper that allows transparent array[variable_index] syntax.
+
+    This class wraps a list of values and overrides __getitem__ to create
+    pycsp3 element expressions when indexed with a variable or expression.
+
+    Unlike regular Python lists, ElementArray supports:
+    - Integer indexing (returns the value directly)
+    - Variable indexing (returns a pycsp3 element expression)
+
+    Example:
+        from pycsp3_scheduling.expressions import ElementArray
+
+        # Create an ElementArray from costs
+        costs = ElementArray([10, 20, 30, 40, 50])
+
+        # Index with a constant - returns 30
+        costs[2]
+
+        # Index with a variable/expression - returns element expression
+        idx = next_arg(route, interval)
+        cost = costs[idx]  # Creates element(costs, idx) automatically
+
+        # Use in objective
+        minimize(Sum(costs[next_arg(route, v)] for v in visits))
+
+    Attributes:
+        data: The underlying list of values.
+        _var_array: Cached pycsp3 VarArray for element constraints.
+    """
+
+    def __init__(self, data: list[int | float]) -> None:
+        """
+        Initialize an ElementArray.
+
+        Args:
+            data: A list of numeric values.
+        """
+        if not data:
+            raise ValueError("ElementArray cannot be empty")
+        self._data = list(data)
+        self._var_array: Any = None
+
+    @property
+    def data(self) -> list[int | float]:
+        """The underlying data list."""
+        return self._data
+
+    def __len__(self) -> int:
+        """Return the number of elements."""
+        return len(self._data)
+
+    @overload
+    def __getitem__(self, index: int) -> int | float: ...
+
+    @overload
+    def __getitem__(self, index: Any) -> Any: ...
+
+    def __getitem__(self, index: int | Any) -> int | float | Any:
+        """
+        Index the array, supporting both constants and variables.
+
+        Args:
+            index: An integer constant or a pycsp3 variable/expression.
+
+        Returns:
+            - If index is an int: Returns the value at that index.
+            - If index is a variable/expression: Returns a pycsp3 element expression.
+
+        Example:
+            arr = ElementArray([10, 20, 30])
+            arr[1]        # Returns 20
+            arr[var_idx]  # Returns element expression
+        """
+        # Constant integer index - return value directly
+        if isinstance(index, int):
+            return self._data[index]
+
+        # Variable index - create element expression
+        return element(self._data, index)
+
+    def __repr__(self) -> str:
+        return f"ElementArray({self._data!r})"
+
+    def __iter__(self):
+        """Iterate over the values."""
+        return iter(self._data)
+
+
+class _ElementMatrixRowProxy:
+    """
+    Internal proxy for deferred column indexing when row is a variable.
+
+    This allows matrix[var_row][col] syntax to work correctly with ElementMatrix.
+    """
+
+    def __init__(self, matrix: ElementMatrix, row_idx: Any) -> None:
+        self._matrix = matrix
+        self._row_idx = row_idx
+
+    def __getitem__(self, col_idx: Any) -> Any:
+        """
+        Index with column, creating element expression.
+
+        Args:
+            col_idx: Column index (int or variable/expression).
+
+        Returns:
+            A pycsp3 element expression for matrix[row][col].
+        """
+        return self._matrix._get_element(self._row_idx, col_idx)
+

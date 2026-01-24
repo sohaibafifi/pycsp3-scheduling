@@ -38,6 +38,7 @@ from pycsp3_scheduling.variables import (
 
 # Expressions
 from pycsp3_scheduling.expressions import (
+    ElementArray,
     ElementMatrix,
     IntervalExpr,
     clear_sequence_expr_cache,

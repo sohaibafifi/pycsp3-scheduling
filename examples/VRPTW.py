@@ -8,17 +8,18 @@ This example demonstrates the CP Optimizer-style distance objective:
 
     for k in vehicles:
         for i in intervals:
-            distance += M[id_i, next_arg(route[k], visit[k][i], last, absent)]
+            distance += M[id_i][next_arg(route[k], visit[k][i], last, absent)]
 
 Where:
-- M is the transition matrix with travel distances between customers
+- M is the ElementMatrix with travel distances between customers
 - id_i is the ID of interval i (0=depot, 1..n=customers)
 - next_arg returns the ID of the next interval in the sequence
+- M[i][j] uses chained indexing (also supports M[i, j] tuple syntax)
 - last_value = distance back to depot (when interval is last in route)
 - absent_value = 0 (no cost if interval is not scheduled)
 
 Key functions used:
-- ElementMatrix: 2D matrix indexed by expressions (like CP Optimizer's IloNumArray2)
+- ElementMatrix: 2D matrix with M[i][j] or M[i, j] syntax for variable indexing
 - next_arg: Returns ID of next interval in sequence (pycsp3 variable)
 - SeqNoOverlap: Ensures non-overlapping intervals with transition times
 - alternative: Assigns each customer to exactly one vehicle
@@ -175,12 +176,16 @@ print(f"Capacity constraints: each route demand <= {vehicle_capacity}")
 # This is the CP Optimizer-style objective using ElementMatrix and next_arg.
 #
 # Matrix structure:
-#   M[id_i, id_j] = distance from id_i to id_j (id 0 is depot)
-#   M[id_i, last_id] = distance from id_i back to depot
-#   M[id_i, absent_id] = 0 (no cost if interval is absent)
+#   M[id_i][id_j] = distance from id_i to id_j (id 0 is depot)
+#   M[id_i][last_id] = distance from id_i back to depot
+#   M[id_i][absent_id] = 0 (no cost if interval is absent)
+#
+# ElementMatrix supports two indexing syntaxes:
+#   M[i, j]   - tuple syntax
+#   M[i][j]   - chained syntax (more natural for array indexing)
 #
 # For each vehicle route and each interval:
-#   cost += M[id_i, next_arg(route, interval, last_value, absent_value)]
+#   cost += M[id_i][next_arg(route, interval, last_value, absent_value)]
 
 # Build the transition cost matrix (includes depot as id 0)
 cost_matrix = [row[:] for row in travel]
@@ -200,7 +205,8 @@ print(f"\nDistance objective using next_arg pattern:")
 print(f"  Matrix size: {M.n_rows}x{M.n_cols} (+ last_id={M.last_type}, absent_id={M.absent_type})")
 print(f"  Example: Depot->C1 = {M.get_value(0, 1)}, C2->depot = {M.get_value(2, M.last_type)}")
 
-# Build objective: sum of M[id_i, next_arg(route, interval)]
+# Build objective: sum of M[id_i][next_arg(route, interval)]
+# Using chained indexing syntax M[row][col] which is more natural
 distance_terms = []
 for v in range(n_vehicles):
     depot_next = next_arg(
@@ -209,7 +215,8 @@ for v in range(n_vehicles):
         last_value=M.last_type,
         absent_value=M.absent_type,
     )
-    distance_terms.append(M[0, depot_next])
+    # Use chained syntax: M[0][depot_next]
+    distance_terms.append(M[0][depot_next])
     for c in range(n_customers):
         id_i = c + 1  # ID of this interval (1-indexed customer)
         next_id = next_arg(
@@ -218,8 +225,8 @@ for v in range(n_vehicles):
             last_value=M.last_type,    # Use matrix's last column index
             absent_value=M.absent_type,  # Use matrix's absent column index
         )
-        # M[id_i, next_id] gives the transition cost
-        distance_terms.append(M[id_i, next_id])
+        # M[id_i][next_id] gives the transition cost (chained syntax)
+        distance_terms.append(M[id_i][next_id])
 
 # Note: This objective covers depot departure, customer-to-customer,
 # and return-to-depot distances.
