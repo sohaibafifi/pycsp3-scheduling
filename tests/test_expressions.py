@@ -508,3 +508,75 @@ class TestElementMatrixChainedIndexing:
 
         with pytest.raises(ValueError, match="must be rectangular"):
             ElementMatrix([[1, 2], [3]])
+
+
+class TestElementFunctions:
+    """Tests for element and element2d functions."""
+
+    def test_element_with_int_index(self):
+        """Test element with integer index returns value directly."""
+        from pycsp3_scheduling.expressions.element import element
+
+        arr = [10, 20, 30, 40, 50]
+        result = element(arr, 2)
+        assert result == 30
+
+    def test_element2d_with_int_indices(self):
+        """Test element2d with integer indices returns value directly."""
+        from pycsp3_scheduling.expressions.element import element2d
+
+        matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+        result = element2d(matrix, 1, 2)
+        assert result == 6
+
+    def test_element_matrix_tuple_indexing_wrong_dims(self):
+        """Test ElementMatrix with wrong tuple dimensions raises."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]])
+
+        with pytest.raises(TypeError, match="requires 2D indexing"):
+            m[0, 1, 2]  # Too many indices
+
+    def test_element_matrix_extended_matrix(self):
+        """Test ElementMatrix.build_extended_matrix."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]], last_value=99, absent_value=0)
+        extended = m.build_extended_matrix()
+
+        assert len(extended) == 2
+        assert len(extended[0]) == 4  # 2 cols + last + absent
+        assert extended[0][-2] == 99  # last value
+        assert extended[0][-1] == 0   # absent value
+
+    def test_element_matrix_per_row_absent_value(self):
+        """Test ElementMatrix with per-row absent values."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]], last_value=0, absent_value=[10, 20])
+        assert m.get_value(0, m.absent_type) == 10
+        assert m.get_value(1, m.absent_type) == 20
+
+    def test_element_matrix_total_cols(self):
+        """Test ElementMatrix.total_cols property."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2, 3], [4, 5, 6]])
+        assert m.total_cols == 5  # 3 cols + last + absent
+
+    def test_element_matrix_properties(self):
+        """Test ElementMatrix property accessors."""
+        from pycsp3_scheduling.expressions import ElementMatrix
+
+        m = ElementMatrix([[1, 2], [3, 4]], last_value=99, absent_value=-1)
+
+        assert m.n_rows == 2
+        assert m.n_cols == 2
+        assert m.last_type == 2
+        assert m.absent_type == 3
+
+
+    # NOTE: Tests for ElementMatrix/ElementArray with pycsp3 variables are not included
+    # here as they require a full pycsp3 model context to work correctly and can cause
+    # segfaults when run in isolation. These scenarios are tested in integration tests.
