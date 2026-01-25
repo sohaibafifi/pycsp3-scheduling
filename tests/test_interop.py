@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from pycsp3_scheduling import IntervalVar
+from pycsp3_scheduling import IntervalVar, clear
 from pycsp3_scheduling.variables.interval import clear_interval_registry
 from pycsp3_scheduling.interop import (
     IntervalValue,
@@ -20,19 +20,9 @@ from pycsp3_scheduling.interop import (
 @pytest.fixture(autouse=True)
 def reset_registries():
     """Reset registries before each test."""
-    clear_interval_registry()
-    from pycsp3_scheduling.functions.cumul_functions import clear_cumul_registry
-    from pycsp3_scheduling.functions.state_functions import clear_state_function_registry
-    from pycsp3_scheduling.variables.sequence import clear_sequence_registry
-
-    clear_cumul_registry()
-    clear_state_function_registry()
-    clear_sequence_registry()
+    clear()
     yield
-    clear_interval_registry()
-    clear_cumul_registry()
-    clear_state_function_registry()
-    clear_sequence_registry()
+    clear()
 
 
 class TestStartEndPresenceTime:
@@ -436,6 +426,72 @@ class TestSolutionStatistics:
         assert d["status"] == "SAT"
         assert d["objective_value"] == 100
         assert d["span"] == 50
+
+
+class TestClearFunction:
+    """Tests for the unified clear() function."""
+
+    def test_clear_clears_intervals(self):
+        """Test clear() clears interval registry."""
+        from pycsp3_scheduling.variables.interval import get_registered_intervals
+
+        _ = IntervalVar(size=10, name="t1")
+        _ = IntervalVar(size=10, name="t2")
+        assert len(get_registered_intervals()) == 2
+
+        clear()
+        assert len(get_registered_intervals()) == 0
+
+    def test_clear_clears_sequences(self):
+        """Test clear() clears sequence registry."""
+        from pycsp3_scheduling.variables.sequence import SequenceVar, get_registered_sequences
+
+        t1 = IntervalVar(size=10, name="t1")
+        t2 = IntervalVar(size=10, name="t2")
+        _ = SequenceVar(intervals=[t1, t2], name="seq")
+        assert len(get_registered_sequences()) == 1
+
+        clear()
+        assert len(get_registered_sequences()) == 0
+
+    def test_clear_clears_cumul_functions(self):
+        """Test clear() clears cumulative function registry."""
+        from pycsp3_scheduling.functions.cumul_functions import (
+            CumulFunction,
+            get_registered_cumuls,
+            pulse,
+            register_cumul,
+        )
+
+        t1 = IntervalVar(size=10, name="t1")
+        cumul = CumulFunction([pulse(t1, 2)], name="resource")
+        register_cumul(cumul)
+        assert len(get_registered_cumuls()) == 1
+
+        clear()
+        assert len(get_registered_cumuls()) == 0
+
+    def test_clear_clears_state_functions(self):
+        """Test clear() clears state function registry."""
+        from pycsp3_scheduling.functions.state_functions import (
+            StateFunction,
+            _register_state_function,
+            get_registered_state_functions,
+        )
+
+        state = StateFunction(name="machine_state")
+        _register_state_function(state)
+        assert len(get_registered_state_functions()) == 1
+
+        clear()
+        assert len(get_registered_state_functions()) == 0
+
+    def test_clear_allows_reuse_of_names(self):
+        """Test clear() allows reusing variable names."""
+        _ = IntervalVar(size=10, name="task")
+        clear()
+        # Should not raise - name is now available again
+        _ = IntervalVar(size=20, name="task")
 
 
 class TestModelStatisticsFunction:

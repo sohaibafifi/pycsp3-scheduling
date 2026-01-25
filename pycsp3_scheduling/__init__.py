@@ -157,8 +157,57 @@ from pycsp3_scheduling.functions import (
 # Visualization (imported as submodule)
 from pycsp3_scheduling import visu
 
+
+def clear() -> None:
+    """
+    Clear all pycsp3 and pycsp3-scheduling state.
+
+    This function resets everything to a clean state, including:
+    - pycsp3 variables, constraints, and objectives
+    - IntervalVar registry
+    - SequenceVar registry
+    - CumulFunction registry
+    - StateFunction registry
+    - Sequence expression cache
+    - Internal pycsp3 caches
+
+    Call this between separate models or at the start of a new model
+    to ensure no state leaks between runs.
+
+    Example:
+        >>> from pycsp3_scheduling import clear, IntervalVar
+        >>> task1 = IntervalVar(size=10, name="task1")
+        >>> # ... build and solve first model ...
+        >>> clear()  # Reset everything
+        >>> task2 = IntervalVar(size=20, name="task2")  # Start fresh
+    """
+    import pycsp3
+
+    from pycsp3_scheduling.constraints._pycsp3 import clear_pycsp3_cache
+    from pycsp3_scheduling.expressions.sequence_expr import clear_sequence_expr_cache
+    from pycsp3_scheduling.functions.cumul_functions import clear_cumul_registry
+    from pycsp3_scheduling.functions.state_functions import clear_state_function_registry
+    from pycsp3_scheduling.variables.interval import clear_interval_registry
+    from pycsp3_scheduling.variables.sequence import clear_sequence_registry
+
+    # Clear pycsp3 state (variables, constraints, objectives)
+    pycsp3.clear()
+
+    # Clear scheduling registries
+    clear_interval_registry()
+    clear_sequence_registry()
+    clear_cumul_registry()
+    clear_state_function_registry()
+
+    # Clear caches
+    clear_sequence_expr_cache()
+    clear_pycsp3_cache()
+
+
 __all__ = [
     "__version__",
+    # Core
+    "clear",
     # Variables
     "IntervalVar",
     "IntervalVarArray",
@@ -190,6 +239,7 @@ __all__ = [
     "length_of_prev",
     "type_of_prev",
     # Expressions - Element (array indexing)
+    "ElementArray",
     "ElementMatrix",
     "element",
     "element2d",
