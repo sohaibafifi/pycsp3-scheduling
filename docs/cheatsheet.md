@@ -31,6 +31,16 @@ scaled = IntervalVar(
 )
 ```
 
+This can be seen as in the following diagram:
+![IntervalVar](resources/IntervalVar.png)
+
+This curve demonstrates how the physical length (duration) of `scaled` changes depending on when it starts.
+
+- Start $t=0$: The task finishes by $t=10$ (entirely within the 100% zone), so Length = 10.
+- Start $t>10$: The task runs entirely in the 50% zone, requiring twice the time to complete the same work. Length = 20.
+- Transition: Starting between 0 and 10 results in a mixed duration between 10 and 20.
+- The red dashed line shows the user-defined constraint `length=(10, 25)`. The actual physics of the intensity function keep the length well within this bound (maxing out at 20).
+
 ### Arrays and Dictionaries
 
 ```python
