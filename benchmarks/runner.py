@@ -504,7 +504,7 @@ def run_model(
         try:
             total_start = time.time()
             result = subprocess.run(
-                ["uv", "run", "python", str(wrapper_path)],
+                ["python", str(wrapper_path)],
                 capture_output=True,
                 text=True,
                 timeout=timeout + 60,  # Safety buffer - solver handles actual timeout
