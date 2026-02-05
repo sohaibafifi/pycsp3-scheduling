@@ -110,13 +110,10 @@ OAR (`oarsub`):
 
 ```bash
 oarsub \
-  --array 1-"${N}" \
+  --array "${N}" \
+  --array-param-file "$PWD/benchmarks/results/jobs/manifest.tsv" \
   -l /nodes=1/core=1,walltime=00:20:00 \
-  "$PWD/benchmarks/cluster/run_oar_array.sh" \
-  "$PWD/benchmarks/results/jobs/manifest.tsv" \
-  600 \
-  full \
-  "$PWD/benchmarks/results/jobs"
+  "$PWD/benchmarks/cluster/run_oar_array.sh"
 ```
 
 Each task writes into its own folder under `benchmarks/results/jobs/`.
