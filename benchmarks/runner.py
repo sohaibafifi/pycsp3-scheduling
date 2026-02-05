@@ -171,37 +171,52 @@ try:
 
         # Count constraints
         def count_constraints(element):
-            """Recursively count constraints in XCSP3 element."""
-            count = 0
-            ctype = {{}}
+            """Recursively count instantiated constraints in XCSP3 element."""
             tag = element.tag.replace(ns, "")
+            ctype = {{}}
+
+            if tag == "constraints":
+                total = 0
+                for sub in element:
+                    c, ct = count_constraints(sub)
+                    total += c
+                    for k, v in ct.items():
+                        ctype[k] = ctype.get(k, 0) + v
+                return total, ctype
 
             if tag == "group":
-                # In a group, count <args> elements (each is one constraint instantiation)
-                # The constraint type is determined by the first non-args child
-                template_type = None
                 args_count = 0
+                template_count = 0
+                template_types = {{}}
                 for sub in element:
                     subtag = sub.tag.replace(ns, "")
                     if subtag == "args":
                         args_count += 1
-                    elif template_type is None and subtag not in ("block", "group"):
-                        template_type = subtag
-                if template_type and args_count > 0:
-                    count = args_count
-                    ctype[template_type] = args_count
-            elif tag == "block":
-                # In a block, recursively count each child
+                        continue
+                    c, ct = count_constraints(sub)
+                    template_count += c
+                    for k, v in ct.items():
+                        template_types[k] = template_types.get(k, 0) + v
+
+                if args_count == 0 or template_count == 0:
+                    return 0, ctype
+
+                for k, v in template_types.items():
+                    ctype[k] = v * args_count
+                return template_count * args_count, ctype
+
+            if tag == "block":
+                total = 0
                 for sub in element:
                     c, ct = count_constraints(sub)
-                    count += c
+                    total += c
                     for k, v in ct.items():
                         ctype[k] = ctype.get(k, 0) + v
-            elif tag not in ("constraints",):
-                # Direct constraint
-                count = 1
-                ctype[tag] = 1
-            return count, ctype
+                return total, ctype
+
+            # Direct primitive/meta-constraint
+            ctype[tag] = 1
+            return 1, ctype
 
         ctrs_section = root.find(f".//{{ns}}constraints")
         if ctrs_section is not None:
@@ -367,36 +382,52 @@ try:
 
         # Count constraints
         def count_constraints(element):
-            """Recursively count constraints in XCSP3 element."""
-            count = 0
-            ctype = {{}}
+            """Recursively count instantiated constraints in XCSP3 element."""
             tag = element.tag.replace(ns, "")
+            ctype = {{}}
+
+            if tag == "constraints":
+                total = 0
+                for sub in element:
+                    c, ct = count_constraints(sub)
+                    total += c
+                    for k, v in ct.items():
+                        ctype[k] = ctype.get(k, 0) + v
+                return total, ctype
 
             if tag == "group":
-                # In a group, count <args> elements (each is one constraint instantiation)
-                template_type = None
                 args_count = 0
+                template_count = 0
+                template_types = {{}}
                 for sub in element:
                     subtag = sub.tag.replace(ns, "")
                     if subtag == "args":
                         args_count += 1
-                    elif template_type is None and subtag not in ("block", "group"):
-                        template_type = subtag
-                if template_type and args_count > 0:
-                    count = args_count
-                    ctype[template_type] = args_count
-            elif tag == "block":
-                # In a block, recursively count each child
+                        continue
+                    c, ct = count_constraints(sub)
+                    template_count += c
+                    for k, v in ct.items():
+                        template_types[k] = template_types.get(k, 0) + v
+
+                if args_count == 0 or template_count == 0:
+                    return 0, ctype
+
+                for k, v in template_types.items():
+                    ctype[k] = v * args_count
+                return template_count * args_count, ctype
+
+            if tag == "block":
+                total = 0
                 for sub in element:
                     c, ct = count_constraints(sub)
-                    count += c
+                    total += c
                     for k, v in ct.items():
                         ctype[k] = ctype.get(k, 0) + v
-            elif tag not in ("constraints",):
-                # Direct constraint
-                count = 1
-                ctype[tag] = 1
-            return count, ctype
+                return total, ctype
+
+            # Direct primitive/meta-constraint
+            ctype[tag] = 1
+            return 1, ctype
 
         ctrs_section = root.find(f".//{{ns}}constraints")
         if ctrs_section is not None:

@@ -23,6 +23,18 @@ class XCSP3Stats(TypedDict):
     var_types: dict[str, int]
 
 
+def _tag_name(tag: str) -> str:
+    """Return XML tag without namespace."""
+    return tag.split("}")[-1]
+
+
+def _namespace_prefix(root_tag: str) -> str:
+    """Return XML namespace prefix like '{...}' or empty string."""
+    if root_tag.startswith("{"):
+        return root_tag.split("}")[0] + "}"
+    return ""
+
+
 def parse_array_size(size_str: str) -> int:
     """Parse array size string like '[10][5]' or '10' into total count."""
     if not size_str:
@@ -33,6 +45,77 @@ def parse_array_size(size_str: str) -> int:
     if not dims:
         return 0
     return prod(int(d) for d in dims)
+
+
+def _count_variables(root: ET.Element, ns: str) -> tuple[int, Counter[str]]:
+    """Count variables from XCSP3 <variables> section."""
+    n_vars = 0
+    var_types: Counter[str] = Counter()
+    vars_section = root.find(f".//{ns}variables")
+    if vars_section is None:
+        return n_vars, var_types
+
+    for child in vars_section:
+        tag = _tag_name(child.tag)
+        if tag == "var":
+            n_vars += 1
+            var_types["var"] += 1
+        elif tag == "array":
+            count = parse_array_size(child.get("size", ""))
+            n_vars += count
+            var_types["array"] += count
+
+    return n_vars, var_types
+
+
+def _count_constraint_element(element: ET.Element) -> tuple[int, Counter[str]]:
+    """
+    Count instantiated constraints in an XCSP3 element.
+
+    In XCSP3, a <group> defines a template and one instantiated constraint per <args>.
+    """
+    tag = _tag_name(element.tag)
+    types: Counter[str] = Counter()
+
+    if tag == "constraints":
+        total = 0
+        for child in element:
+            c, t = _count_constraint_element(child)
+            total += c
+            types.update(t)
+        return total, types
+
+    if tag == "block":
+        total = 0
+        for child in element:
+            c, t = _count_constraint_element(child)
+            total += c
+            types.update(t)
+        return total, types
+
+    if tag == "group":
+        args_count = 0
+        template_count = 0
+        template_types: Counter[str] = Counter()
+        for child in element:
+            child_tag = _tag_name(child.tag)
+            if child_tag == "args":
+                args_count += 1
+                continue
+            c, t = _count_constraint_element(child)
+            template_count += c
+            template_types.update(t)
+
+        if args_count == 0 or template_count == 0:
+            return 0, types
+
+        for k, v in template_types.items():
+            types[k] += v * args_count
+        return template_count * args_count, types
+
+    # Direct primitive/meta-constraint.
+    types[tag] += 1
+    return 1, types
 
 
 def parse_xcsp3_stats(xml_path: str | Path) -> XCSP3Stats:
@@ -48,46 +131,14 @@ def parse_xcsp3_stats(xml_path: str | Path) -> XCSP3Stats:
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    # Handle namespace if present
-    ns = ""
-    if root.tag.startswith("{"):
-        ns = root.tag.split("}")[0] + "}"
-
-    # Count variables
-    n_vars = 0
-    var_types: Counter[str] = Counter()
-
-    vars_section = root.find(f".//{ns}variables")
-    if vars_section is not None:
-        for child in vars_section:
-            tag = child.tag.replace(ns, "")
-            if tag == "var":
-                n_vars += 1
-                var_types["var"] += 1
-            elif tag == "array":
-                size_str = child.get("size", "")
-                count = parse_array_size(size_str)
-                n_vars += count
-                var_types["array"] += count
-
-    # Count constraints
-    n_constraints = 0
-    constraint_types: Counter[str] = Counter()
-
+    ns = _namespace_prefix(root.tag)
+    n_vars, var_types = _count_variables(root, ns)
     ctrs_section = root.find(f".//{ns}constraints")
-    if ctrs_section is not None:
-        for child in ctrs_section:
-            tag = child.tag.replace(ns, "")
-            # Skip block/group wrappers, count actual constraints
-            if tag in ("block", "group"):
-                for sub in child:
-                    subtag = sub.tag.replace(ns, "")
-                    if subtag not in ("block", "group"):
-                        n_constraints += 1
-                        constraint_types[subtag] += 1
-            else:
-                n_constraints += 1
-                constraint_types[tag] += 1
+    if ctrs_section is None:
+        n_constraints = 0
+        constraint_types: Counter[str] = Counter()
+    else:
+        n_constraints, constraint_types = _count_constraint_element(ctrs_section)
 
     return XCSP3Stats(
         n_vars=n_vars,
@@ -109,45 +160,14 @@ def parse_xcsp3_from_string(xml_content: str) -> XCSP3Stats:
     """
     root = ET.fromstring(xml_content)
 
-    # Handle namespace if present
-    ns = ""
-    if root.tag.startswith("{"):
-        ns = root.tag.split("}")[0] + "}"
-
-    # Count variables
-    n_vars = 0
-    var_types: Counter[str] = Counter()
-
-    vars_section = root.find(f".//{ns}variables")
-    if vars_section is not None:
-        for child in vars_section:
-            tag = child.tag.replace(ns, "")
-            if tag == "var":
-                n_vars += 1
-                var_types["var"] += 1
-            elif tag == "array":
-                size_str = child.get("size", "")
-                count = parse_array_size(size_str)
-                n_vars += count
-                var_types["array"] += count
-
-    # Count constraints
-    n_constraints = 0
-    constraint_types: Counter[str] = Counter()
-
+    ns = _namespace_prefix(root.tag)
+    n_vars, var_types = _count_variables(root, ns)
     ctrs_section = root.find(f".//{ns}constraints")
-    if ctrs_section is not None:
-        for child in ctrs_section:
-            tag = child.tag.replace(ns, "")
-            if tag in ("block", "group"):
-                for sub in child:
-                    subtag = sub.tag.replace(ns, "")
-                    if subtag not in ("block", "group"):
-                        n_constraints += 1
-                        constraint_types[subtag] += 1
-            else:
-                n_constraints += 1
-                constraint_types[tag] += 1
+    if ctrs_section is None:
+        n_constraints = 0
+        constraint_types: Counter[str] = Counter()
+    else:
+        n_constraints, constraint_types = _count_constraint_element(ctrs_section)
 
     return XCSP3Stats(
         n_vars=n_vars,
