@@ -144,6 +144,10 @@ uv run python benchmarks/report.py --input=benchmarks/results/results_cluster_me
 uv run python benchmarks/report.py --format=csv --no-plots
 ```
 
+Reports aggregate **instances per model** (averages). For per-instance detail, use the raw
+`results_*.json` files.
+Objective columns in `comparison.csv` are averaged costs per model.
+
 ## Metrics Collected
 
 | Metric | Classical | Scheduling |
@@ -173,6 +177,8 @@ Comparison uses:
 - `benchmarks/results/reports/solve_time_comparison.{pdf,png}`
 - `benchmarks/results/reports/solve_time_scatter.{pdf,png}`
 - `benchmarks/results/reports/loc_comparison.{pdf,png}`
+- `benchmarks/results/reports/objective_avg_comparison.{pdf,png}`
+- `benchmarks/results/reports/objective_gap.{pdf,png}`
 - `benchmarks/results/reports/objective_snapshot_comparison.{pdf,png}`
 - `benchmarks/results/reports/optimality_counts.{pdf,png}`
 
@@ -180,8 +186,9 @@ Comparison uses:
 
 1. If both are `OPTIMUM`, objectives should match.
 2. If status is `SAT`/`TIMEOUT`, compare objective snapshot (`Obj_Better`).
-3. Compare number of proven `OPTIMUM` statuses per side.
-4. Inspect variable/constraint augmentation and solve-time tradeoff.
+3. Compare average objective costs per model (`Classical_Obj_Avg` vs `Scheduling_Obj_Avg`).
+4. Compare number of proven `OPTIMUM` statuses per side.
+5. Inspect variable/constraint augmentation and solve-time tradeoff.
 
 ## Troubleshooting
 

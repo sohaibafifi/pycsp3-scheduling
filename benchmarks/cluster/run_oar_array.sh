@@ -55,7 +55,8 @@ mkdir -p "${TASK_OUT}"
 cd "${PROJECT_ROOT}"
 echo "[OAR ${TASK_ID:-param}] ${MODEL} / ${INSTANCE} (rep=${REP_OFFSET})"
 
-uv run python benchmarks/runner.py \
+
+python benchmarks/runner.py \
   --suite="${SUITE}" \
   --model="${MODEL}" \
   --instance="${INSTANCE}" \

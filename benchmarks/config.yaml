@@ -2106,7 +2106,7 @@ models:
     instances:
     - t020m10r03-1.json
 settings:
-  timeout: 300
+  timeout: 1200
   repetitions: 1
   solver: ace
 suites:

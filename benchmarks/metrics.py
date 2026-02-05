@@ -76,13 +76,14 @@ class ComparisonResult:
 
     model_name: str
     instance: str
+    instance_count: int = 1
     # Classical metrics
     classical_vars: int = 0
     classical_constraints: int = 0
     classical_solve_time: float = 0.0
     classical_build_time: float = 0.0
     classical_total_time: float = 0.0
-    classical_objective: int | None = None
+    classical_objective: float | None = None
     classical_status: str = ""
     classical_loc: int = 0
     # Scheduling metrics
@@ -91,7 +92,7 @@ class ComparisonResult:
     scheduling_solve_time: float = 0.0
     scheduling_build_time: float = 0.0
     scheduling_total_time: float = 0.0
-    scheduling_objective: int | None = None
+    scheduling_objective: float | None = None
     scheduling_status: str = ""
     scheduling_loc: int = 0
     scheduling_interval_vars: int = 0
@@ -164,6 +165,7 @@ class ComparisonResult:
         return cls(
             model_name=classical.model_name,
             instance=classical.instance,
+            instance_count=1,
             classical_vars=classical.n_vars,
             classical_constraints=classical.n_constraints,
             classical_solve_time=classical.solve_time,

@@ -14,7 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from metrics import ComparisonResult, RunResult
+from metrics import ComparisonResult, RunResult, compare_objective_values
 
 
 def _mean(values: list[float]) -> float | None:
@@ -22,6 +22,42 @@ def _mean(values: list[float]) -> float | None:
     if not values:
         return None
     return sum(values) / len(values)
+
+
+def _weighted_mean(values: list[float], weights: list[int]) -> float | None:
+    """Return weighted mean or None if empty."""
+    if not values or not weights:
+        return None
+    total_weight = sum(weights)
+    if total_weight == 0:
+        return None
+    return sum(v * w for v, w in zip(values, weights)) / total_weight
+
+
+def _fmt_count(value: float | int, instance_count: int) -> str:
+    """Format count-like values, showing decimals only for aggregated rows."""
+    if instance_count <= 1:
+        return str(int(value))
+    try:
+        if float(value).is_integer():
+            return str(int(value))
+    except (TypeError, ValueError):
+        return str(value)
+    return f"{value:.1f}"
+
+
+def _fmt_objective(value: float | int | None, instance_count: int) -> str:
+    """Format objective values (averaged on aggregated rows)."""
+    if value is None:
+        return ""
+    if instance_count <= 1:
+        try:
+            if float(value).is_integer():
+                return str(int(value))
+        except (TypeError, ValueError):
+            return str(value)
+        return str(value)
+    return f"{float(value):.2f}"
 
 
 def _objective_match_label(match: bool | None) -> str:
@@ -96,6 +132,117 @@ def aggregate_results(results: list[dict]) -> dict[tuple[str, str], dict[str, Ru
     return by_model
 
 
+def aggregate_comparisons_by_model(
+    comparisons: list[ComparisonResult],
+) -> list[ComparisonResult]:
+    """Aggregate comparisons across instances, producing one row per model."""
+    grouped: dict[str, list[ComparisonResult]] = defaultdict(list)
+    for c in comparisons:
+        grouped[c.model_name].append(c)
+
+    aggregated: list[ComparisonResult] = []
+    for model_name, items in sorted(grouped.items()):
+        instance_count = sum(c.instance_count for c in items) or len(items)
+
+        def wmean(attr: str) -> float:
+            vals: list[float] = []
+            weights: list[int] = []
+            for c in items:
+                val = getattr(c, attr)
+                if val is None:
+                    continue
+                weight = c.instance_count if c.instance_count > 0 else 1
+                vals.append(float(val))
+                weights.append(weight)
+            mean_val = _weighted_mean(vals, weights)
+            return mean_val if mean_val is not None else 0.0
+
+        def combine_status(values: list[str]) -> str:
+            values = [v for v in values if v]
+            if not values:
+                return ""
+            return values[0] if all(v == values[0] for v in values) else "MIXED"
+
+        objective_items = [
+            c
+            for c in items
+            if c.objective_snapshot_comparable
+            and c.classical_objective is not None
+            and c.scheduling_objective is not None
+        ]
+        if objective_items:
+            weights = [c.instance_count if c.instance_count > 0 else 1 for c in objective_items]
+            classical_obj_avg = _weighted_mean(
+                [float(c.classical_objective) for c in objective_items],
+                weights,
+            )
+            scheduling_obj_avg = _weighted_mean(
+                [float(c.scheduling_objective) for c in objective_items],
+                weights,
+            )
+            if classical_obj_avg is not None and scheduling_obj_avg is not None:
+                objective_better = compare_objective_values(
+                    classical_obj_avg, scheduling_obj_avg
+                )
+                objective_snapshot_comparable = True
+            else:
+                objective_better = None
+                objective_snapshot_comparable = False
+        else:
+            classical_obj_avg = None
+            scheduling_obj_avg = None
+            objective_better = None
+            objective_snapshot_comparable = False
+
+        comparable_items = [c for c in items if c.objectives_comparable]
+        if comparable_items:
+            any_mismatch = any(c.objectives_match is False for c in comparable_items)
+            all_match = all(c.objectives_match is True for c in comparable_items)
+            objectives_match = True if all_match else False if any_mismatch else None
+            objectives_comparable = True
+        else:
+            objectives_match = None
+            objectives_comparable = False
+
+        aggregated.append(
+            ComparisonResult(
+                model_name=model_name,
+                instance=f"avg({instance_count})",
+                instance_count=instance_count,
+                classical_vars=wmean("classical_vars"),
+                classical_constraints=wmean("classical_constraints"),
+                classical_solve_time=wmean("classical_solve_time"),
+                classical_build_time=wmean("classical_build_time"),
+                classical_total_time=wmean("classical_total_time"),
+                classical_objective=classical_obj_avg,
+                classical_status=combine_status([c.classical_status for c in items]),
+                classical_loc=wmean("classical_loc"),
+                scheduling_vars=wmean("scheduling_vars"),
+                scheduling_constraints=wmean("scheduling_constraints"),
+                scheduling_solve_time=wmean("scheduling_solve_time"),
+                scheduling_build_time=wmean("scheduling_build_time"),
+                scheduling_total_time=wmean("scheduling_total_time"),
+                scheduling_objective=scheduling_obj_avg,
+                scheduling_status=combine_status([c.scheduling_status for c in items]),
+                scheduling_loc=wmean("scheduling_loc"),
+                scheduling_interval_vars=wmean("scheduling_interval_vars"),
+                scheduling_sequences=wmean("scheduling_sequences"),
+                var_augmentation=wmean("var_augmentation"),
+                constraint_augmentation=wmean("constraint_augmentation"),
+                solve_speedup=wmean("solve_speedup"),
+                total_speedup=wmean("total_speedup"),
+                loc_reduction=wmean("loc_reduction"),
+                statuses_comparable=any(c.statuses_comparable for c in items),
+                objective_snapshot_comparable=objective_snapshot_comparable,
+                objective_better=objective_better,
+                objectives_comparable=objectives_comparable,
+                objectives_match=objectives_match,
+            )
+        )
+
+    return aggregated
+
+
 def generate_csv_report(
     comparisons: list[ComparisonResult], output_path: Path
 ) -> None:
@@ -106,6 +253,7 @@ def generate_csv_report(
             [
                 "Model",
                 "Instance",
+                "Instances",
                 "Classical_Vars",
                 "Scheduling_Vars",
                 "Var_Augmentation%",
@@ -120,8 +268,8 @@ def generate_csv_report(
                 "LOC_Reduction%",
                 "IntervalVars",
                 "Sequences",
-                "Classical_Obj",
-                "Scheduling_Obj",
+                "Classical_Obj_Avg",
+                "Scheduling_Obj_Avg",
                 "Obj_Better",
                 "Obj_Match",
                 "Classical_Status",
@@ -134,22 +282,23 @@ def generate_csv_report(
                 [
                     c.model_name,
                     c.instance,
-                    c.classical_vars,
-                    c.scheduling_vars,
+                    c.instance_count,
+                    _fmt_count(c.classical_vars, c.instance_count),
+                    _fmt_count(c.scheduling_vars, c.instance_count),
                     f"{c.var_augmentation * 100:.1f}",
-                    c.classical_constraints,
-                    c.scheduling_constraints,
+                    _fmt_count(c.classical_constraints, c.instance_count),
+                    _fmt_count(c.scheduling_constraints, c.instance_count),
                     f"{c.constraint_augmentation * 100:.1f}",
                     f"{c.classical_solve_time:.3f}",
                     f"{c.scheduling_solve_time:.3f}",
                     f"{c.solve_speedup:.2f}",
-                    c.classical_loc,
-                    c.scheduling_loc,
+                    _fmt_count(c.classical_loc, c.instance_count),
+                    _fmt_count(c.scheduling_loc, c.instance_count),
                     f"{c.loc_reduction * 100:.1f}",
-                    c.scheduling_interval_vars,
-                    c.scheduling_sequences,
-                    c.classical_objective if c.classical_objective is not None else "",
-                    c.scheduling_objective if c.scheduling_objective is not None else "",
+                    _fmt_count(c.scheduling_interval_vars, c.instance_count),
+                    _fmt_count(c.scheduling_sequences, c.instance_count),
+                    _fmt_objective(c.classical_objective, c.instance_count),
+                    _fmt_objective(c.scheduling_objective, c.instance_count),
                     _objective_better_label(c.objective_better),
                     _objective_match_label(c.objectives_match),
                     c.classical_status,
@@ -186,8 +335,10 @@ Model & \multicolumn{2}{c}{Variables} & \multicolumn{2}{c}{Constraints} & \multi
                 match_symbol = "--"
             f.write(
                 f"{c.model_name} & "
-                f"{c.classical_vars} & {c.scheduling_vars} & "
-                f"{c.classical_constraints} & {c.scheduling_constraints} & "
+                f"{_fmt_count(c.classical_vars, c.instance_count)} & "
+                f"{_fmt_count(c.scheduling_vars, c.instance_count)} & "
+                f"{_fmt_count(c.classical_constraints, c.instance_count)} & "
+                f"{_fmt_count(c.scheduling_constraints, c.instance_count)} & "
                 f"{c.classical_solve_time:.2f} & {c.scheduling_solve_time:.2f} & "
                 f"{match_symbol} \\\\\n"
             )
@@ -265,6 +416,11 @@ def generate_summary_json(
     objective_better_tie = [
         c for c in objective_snapshot_comparable if c.objective_better == "tie"
     ]
+    objective_avg_pairs = [
+        c
+        for c in objective_snapshot_comparable
+        if c.classical_objective is not None and c.scheduling_objective is not None
+    ]
     classical_optimum = [c for c in comparisons if c.classical_status == "OPTIMUM"]
     scheduling_optimum = [c for c in comparisons if c.scheduling_status == "OPTIMUM"]
     both_optimum = [
@@ -283,6 +439,22 @@ def generate_summary_json(
     ]
     solve_speedups = [c.solve_speedup for c in status_comparable if c.solve_speedup > 0]
     loc_reductions = [c.loc_reduction for c in status_comparable if c.classical_loc > 0]
+    avg_classical_objective = _mean(
+        [c.classical_objective for c in objective_avg_pairs]  # type: ignore[arg-type]
+    )
+    avg_scheduling_objective = _mean(
+        [c.scheduling_objective for c in objective_avg_pairs]  # type: ignore[arg-type]
+    )
+    avg_objective_gap = (
+        _mean(
+            [
+                c.scheduling_objective - c.classical_objective
+                for c in objective_avg_pairs
+            ]
+        )
+        if objective_avg_pairs
+        else None
+    )
 
     summary = {
         "num_models": len(comparisons),
@@ -312,6 +484,9 @@ def generate_summary_json(
                 if objective_snapshot_comparable
                 else None
             ),
+            "classical_objective_avg": avg_classical_objective,
+            "scheduling_objective_avg": avg_scheduling_objective,
+            "objective_avg_gap": avg_objective_gap,
         },
     }
 
@@ -430,7 +605,66 @@ def try_generate_plots(
     plt.savefig(output_dir / "solve_time_scatter.png", dpi=150)
     plt.close()
 
-    # 5. Objective snapshot quality (incumbent comparison)
+    # 5. Average objective comparison (lower is better)
+    obj_models = []
+    classical_obj = []
+    scheduling_obj = []
+    for c in comparisons:
+        if c.classical_objective is None or c.scheduling_objective is None:
+            continue
+        obj_models.append(c.model_name)
+        classical_obj.append(c.classical_objective)
+        scheduling_obj.append(c.scheduling_objective)
+
+    if obj_models:
+        x_obj = np.arange(len(obj_models))
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.bar(
+            x_obj - width / 2,
+            classical_obj,
+            width,
+            label="Classical",
+            color="steelblue",
+        )
+        ax.bar(
+            x_obj + width / 2,
+            scheduling_obj,
+            width,
+            label="Scheduling",
+            color="coral",
+        )
+        ax.set_ylabel("Average Objective (lower is better)")
+        ax.set_xticks(x_obj)
+        ax.set_xticklabels(obj_models, rotation=45, ha="right")
+        ax.set_title("Average Objective Comparison")
+        ax.legend()
+
+        plt.tight_layout()
+        plt.savefig(output_dir / "objective_avg_comparison.pdf")
+        plt.savefig(output_dir / "objective_avg_comparison.png", dpi=150)
+        plt.close()
+
+        # Objective gap (Scheduling - Classical)
+        gaps = [s - c for s, c in zip(scheduling_obj, classical_obj)]
+        gap_colors = [
+            "seagreen" if g < 0 else ("coral" if g > 0 else "gray") for g in gaps
+        ]
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.bar(x_obj, gaps, color=gap_colors, edgecolor="black")
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.set_ylabel("Objective Gap (Scheduling - Classical)")
+        ax.set_xticks(x_obj)
+        ax.set_xticklabels(obj_models, rotation=45, ha="right")
+        ax.set_title("Average Objective Gap (negative = scheduling better)")
+
+        plt.tight_layout()
+        plt.savefig(output_dir / "objective_gap.pdf")
+        plt.savefig(output_dir / "objective_gap.png", dpi=150)
+        plt.close()
+
+    # 6. Objective average better counts
     fig, ax = plt.subplots(figsize=(8, 5))
 
     snapshot_labels = ["Classical Better", "Tie", "Scheduling Better", "N/A"]
@@ -443,8 +677,8 @@ def try_generate_plots(
     snapshot_colors = ["steelblue", "gray", "coral", "lightgray"]
 
     ax.bar(snapshot_labels, snapshot_values, color=snapshot_colors, edgecolor="black")
-    ax.set_ylabel("Number of Model/Instance Pairs")
-    ax.set_title("Objective Snapshot Quality")
+    ax.set_ylabel("Number of Models")
+    ax.set_title("Objective Average: Better Counts")
     ax.set_ylim(0, max(snapshot_values) + 1 if snapshot_values else 1)
 
     plt.tight_layout()
@@ -452,7 +686,7 @@ def try_generate_plots(
     plt.savefig(output_dir / "objective_snapshot_comparison.png", dpi=150)
     plt.close()
 
-    # 6. Number of proven optima
+    # 7. Number of proven optima
     fig, ax = plt.subplots(figsize=(8, 5))
 
     optimum_labels = ["Classical OPTIMUM", "Scheduling OPTIMUM", "Both OPTIMUM"]
@@ -467,7 +701,7 @@ def try_generate_plots(
     ]
 
     ax.bar(optimum_labels, optimum_values, color=["steelblue", "coral", "seagreen"], edgecolor="black")
-    ax.set_ylabel("Number of Model/Instance Pairs")
+    ax.set_ylabel("Number of Models")
     ax.set_title("Proven Optimality Counts")
     ax.set_ylim(0, max(optimum_values) + 1 if optimum_values else 1)
 
@@ -510,6 +744,9 @@ def generate_comparison_report(
         print("  No valid comparisons to report")
         return []
 
+    # Aggregate across instances to one row per model (averages)
+    comparisons = aggregate_comparisons_by_model(comparisons)
+
     # Create reports directory
     reports_dir = output_dir / "reports"
     reports_dir.mkdir(exist_ok=True)
@@ -547,6 +784,11 @@ def generate_comparison_report(
     ]
     objective_better_tie = [
         c for c in objective_snapshot_comparable if c.objective_better == "tie"
+    ]
+    objective_avg_pairs = [
+        c
+        for c in objective_snapshot_comparable
+        if c.classical_objective is not None and c.scheduling_objective is not None
     ]
     classical_optimum = [c for c in comparisons if c.classical_status == "OPTIMUM"]
     scheduling_optimum = [c for c in comparisons if c.scheduling_status == "OPTIMUM"]
@@ -614,7 +856,7 @@ def generate_comparison_report(
         f"{'':>8}"
     )
     print(
-        f"{'Obj better(snapshot)':<20} "
+        f"{'Obj better(avg)':<20} "
         f"C:{len(objective_better_classical):>2} "
         f"S:{len(objective_better_scheduling):>2} "
         f"Tie:{len(objective_better_tie):>2} "
@@ -622,6 +864,21 @@ def generate_comparison_report(
         f"N:{len(objective_snapshot_comparable):>2}"
         f"{'':>8}"
     )
+    if objective_avg_pairs:
+        avg_classical_obj = _mean(
+            [c.classical_objective for c in objective_avg_pairs]  # type: ignore[arg-type]
+        )
+        avg_scheduling_obj = _mean(
+            [c.scheduling_objective for c in objective_avg_pairs]  # type: ignore[arg-type]
+        )
+        if avg_classical_obj is not None and avg_scheduling_obj is not None:
+            gap = avg_scheduling_obj - avg_classical_obj
+            print(
+                f"{'Objective avg':<20} "
+                f"C:{avg_classical_obj:>8.2f} "
+                f"S:{avg_scheduling_obj:>8.2f} "
+                f"Gap:{gap:>8.2f}"
+            )
     print("=" * 60)
 
     return comparisons
