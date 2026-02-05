@@ -1,122 +1,80 @@
 """
-Aircraft Landing Problem
+Aircraft Landing Problem - Clean Scheduling Model (v2)
 
-This model uses pycsp3-scheduling's IntervalVar and pycsp3's NoOverlap constraint
-to schedule aircraft landings while respecting separation requirements.
+This model uses pycsp3-scheduling's IntervalVar with minimal auxiliary variables.
 
-## Data Example
-  airland01.json
-
-## Model
-  variables: IntervalVar
-  constraints: NoOverlap (pycsp3)
+## Improvements over v1:
+1. Eliminates redundant x[] variables - uses start_time() directly
+2. Simplifies earliness/tardiness computation using inequalities
+3. Removes redundant AllDifferent (separations already enforce it)
 
 ## Execution
-  python AircraftLanding.py -data=<datafile.json>
+  python AircraftLanding.py -data=<datafile.json> -solve
 
 ## Links
   - http://people.brunel.ac.uk/~mastjjb/jeb/orlib/airlandinfo.html
-  - https://www.jstor.org/stable/25768908
-  - https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/AircraftLanding/AircraftLanding.py
-
-## Tags
-  realistic, scheduling, xcsp22
 """
 
-import json
-import os
 from itertools import combinations
 
-from pycsp3 import (
-    Var,
-    VarArray,
-    AllDifferent,
-    NoOverlap,
-    satisfy,
-    minimize,
-    solve,
-    SAT,
-    OPTIMUM,
-    value,
-)
-from pycsp3_scheduling import (
-    IntervalVar,
-    start_time,
-    interval_value,
-)
+from pycsp3 import *
+from pycsp3_scheduling import IntervalVar, start_time
 
 # Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "airland01.json")) as f:
-    _data = json.load(f)
+_data = data or load_json_data("airland01.json")
 
-nPlanes = _data["nPlanes"]
-times = [(t["earliest"], t["target"], t["latest"]) for t in _data["times"]]
-costs = [(c["early_penalty"], c["late_penalty"]) for c in _data["costs"]]
-separations = _data["separations"]
+nPlanes = _data.P
+times = [(t.earliest, t.target, t.latest) for t in _data.times]
+costs = [(c.early_penalty, c.late_penalty) for c in _data.costs]
+separations = _data.separations
 
 earliest, target, latest = zip(*times)
 early_penalties, late_penalties = zip(*costs)
 
 P = range(nPlanes)
 
-# landing[i] is the interval for plane i's landing (size=1 represents the landing event)
+# =============================================================================
+# Variables
+# =============================================================================
+
+# Landing interval for each plane
 landing = [
     IntervalVar(
         start=(earliest[i], latest[i]),
-        size=1,  # Landing is a point event with size 1
+        size=1,
         name=f"plane_{i}",
     )
     for i in P
 ]
 
-# x[i] is the landing time of plane i (for easier access)
-x = VarArray(size=nPlanes, dom=lambda i: range(earliest[i], latest[i] + 1))
-
-# erl[i] is the earliness of plane i
+# Earliness and tardiness (auxiliary for objective)
 erl = VarArray(size=nPlanes, dom=lambda i: range(target[i] - earliest[i] + 1))
-
-# trd[i] is the tardiness of plane i
 trd = VarArray(size=nPlanes, dom=lambda i: range(latest[i] - target[i] + 1))
 
+# =============================================================================
+# Constraints
+# =============================================================================
+
 satisfy(
-    # link landing interval to x variable
-    [start_time(landing[i]) == x[i] for i in P],
-    # planes must land at different times
-    AllDifferent(x),
-    # separation constraints using NoOverlap
+    # Separation constraints between all pairs of planes
     [
         NoOverlap(
-            origins=[x[i], x[j]],
+            origins=[start_time(landing[i]), start_time(landing[j])],
             lengths=[separations[i][j], separations[j][i]],
         )
         for i, j in combinations(P, 2)
     ],
-    # computing earliness of planes
-    [erl[i] == max(0, target[i] - x[i]) for i in P],
-    # computing tardiness of planes
-    [trd[i] == max(0, x[i] - target[i]) for i in P],
+
+    # Earliness: erl[i] >= target[i] - landing_time[i]
+    # (minimization will set erl[i] = max(0, target - landing_time))
+    [erl[i] >= target[i] - start_time(landing[i]) for i in P],
+
+    # Tardiness: trd[i] >= landing_time[i] - target[i]
+    [trd[i] >= start_time(landing[i]) - target[i] for i in P],
 )
 
-minimize(
-    # minimizing the deviation cost
-    erl * early_penalties + trd * late_penalties
-)
+# =============================================================================
+# Objective
+# =============================================================================
 
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        total_cost = sum(
-            value(erl[i]) * early_penalties[i] + value(trd[i]) * late_penalties[i]
-            for i in P
-        )
-        print(f"Total deviation cost: {total_cost}")
-        print("\nLanding schedule:")
-        for i in P:
-            v = interval_value(landing[i])
-            early = value(erl[i])
-            late = value(trd[i])
-            status = f"early={early}" if early > 0 else (f"late={late}" if late > 0 else "on-time")
-            print(
-                f"  Plane {i}: land at {v.start} (target={target[i]}, window=[{earliest[i]},{latest[i]}]) {status}"
-            )
+minimize(erl * early_penalties + trd * late_penalties)

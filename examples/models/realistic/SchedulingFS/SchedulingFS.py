@@ -15,7 +15,7 @@ In a flow shop, all jobs follow the same route through the machines.
 
 ## Execution
   python SchedulingFS.py -data=<datafile.json>
-  python SchedulingFS.py  (uses default data)
+  python SchedulingFS.py -data=<datafile.json> -solve
 
 ## Links
   - https://en.wikipedia.org/wiki/Flow_shop_scheduling
@@ -25,23 +25,17 @@ In a flow shop, all jobs follow the same route through the machines.
   realistic, scheduling, notebook
 """
 
-import json
-import os
-
-from pycsp3 import Var, satisfy, minimize, solve, SAT, value, OPTIMUM
+from pycsp3 import *
 from pycsp3_scheduling import (
     IntervalVar,
     SequenceVar,
     SeqNoOverlap,
-    end_before_start,
+    start_time,
     end_time,
-    interval_value,
 )
 
-# Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "04-04-0.json")) as f:
-    durations = json.load(f)
+# Load data - uses pycsp3's -data= argument or falls back to default file
+durations = data or load_json_data("04-04-0.json")
 
 horizon = sum(sum(t) for t in durations) + 1
 n, m = len(durations), len(durations[0])
@@ -68,30 +62,17 @@ sequences = [
     for j in range(m)
 ]
 
-# makespan is the objective
-makespan = Var(dom=range(horizon + 1))
-
 satisfy(
     # operations must be ordered on each job (flow shop: same route for all jobs)
     [
-        end_before_start(ops[i][j], ops[i][j + 1])
+        Increasing(
+            [start_time(ops[i][j]) for j in range(m)],
+            lengths=durations[i],
+        )
         for i in range(n)
-        for j in range(m - 1)
     ],
     # no overlap on each machine
     [SeqNoOverlap(seq) for seq in sequences],
-    # makespan is the maximum end time
-    [makespan >= end_time(ops[i][-1]) for i in range(n)],
 )
 
-minimize(makespan)
-
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        print(f"Makespan: {value(makespan)}")
-        for i in range(n):
-            print(f"Job {i}:")
-            for j in range(m):
-                v = interval_value(ops[i][j])
-                print(f"  Machine {j}: [{v.start}, {v.end})")
+minimize(Maximum(end_time(ops[i][-1]) for i in range(n)))

@@ -14,6 +14,7 @@ the cycle period.
 
 ## Execution
   python CyclicRCPSP.py -data=<datafile.json>
+  python CyclicRCPSP.py -data=<datafile.json> -solve
 
 ## Links
   - https://www.minizinc.org/challenge/2014/results/
@@ -23,39 +24,23 @@ the cycle period.
   realistic, scheduling, mzn11, mzn14
 """
 
-import json
-import os
 from itertools import combinations
 
-from pycsp3 import (
-    Var,
-    VarArray,
-    Maximum,
-    Minimum,
-    either,
-    satisfy,
-    minimize,
-    solve,
-    SAT,
-    OPTIMUM,
-    value,
-)
+from pycsp3 import *
 from pycsp3_scheduling import (
     IntervalVar,
     SeqCumulative,
     start_time,
     end_time,
-    interval_value,
 )
 
-# Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "easy-4.json")) as f:
-    _data = json.load(f)
+# Load data - uses pycsp3's -data= argument or falls back to default file
+_data = data or load_json_data("easy-4.json")
 
-capacities = _data["capacities"]
-requirements = _data["requirements"]
-precedences = _data["precedences"]
+# pycsp3's data converts JSON to named tuples - use attribute access
+capacities = _data.capacities
+requirements = _data.requirements
+precedences = _data.precedences
 
 nResources, nTasks, nPrecedences = len(capacities), len(requirements), len(precedences)
 
@@ -134,15 +119,3 @@ minimize(
     # minimizing period * horizon + makespan
     period * horizon + z
 )
-
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        v_last = interval_value(task_intervals[-1])
-        print(f"Period: {v_last.start}")
-        print(f"Makespan: {value(z)}")
-        print("\nSchedule:")
-        for i in T:
-            v = interval_value(task_intervals[i])
-            iter_val = value(k[i])
-            print(f"  Task {i:2d}: start={v.start:3d} iter={iter_val}")

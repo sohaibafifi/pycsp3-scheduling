@@ -13,6 +13,7 @@ Tests must be performed in minimal time on machines with resource constraints.
 
 ## Execution
   python TestScheduling.py -data=<datafile.json>
+  python TestScheduling.py -data=<datafile.json> -solve
 
 ## Links
   - https://www.csplib.org/Problems/prob073/
@@ -22,23 +23,9 @@ Tests must be performed in minimal time on machines with resource constraints.
   realistic, scheduling, csplib, xcsp24
 """
 
-import json
-import os
 from itertools import combinations
 
-from pycsp3 import (
-    Var,
-    VarArray,
-    If,
-    Then,
-    either,
-    satisfy,
-    minimize,
-    solve,
-    SAT,
-    OPTIMUM,
-    value,
-)
+from pycsp3 import *
 from pycsp3_scheduling import (
     IntervalVar,
     SequenceVar,
@@ -46,17 +33,15 @@ from pycsp3_scheduling import (
     SeqCumulative,
     start_time,
     end_time,
-    interval_value,
 )
 
-# Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "t020m10r03-1.json")) as f:
-    _data = json.load(f)
+# Load data - uses pycsp3's -data= argument or falls back to default file
+_data = data or load_json_data("t020m10r03-1.json")
 
-nMachines = _data["nMachines"]
-nResources = _data["nResources"]
-tests = [(t["duration"], t["machines"], t["resources"]) for t in _data["tests"]]
+# pycsp3's data converts JSON to named tuples - use attribute access
+nMachines = _data.nMachines
+nResources = _data.nResources
+tests = [(t.duration, t.machines, t.resources) for t in _data.tests]
 
 durations, machines, resources = zip(*tests)
 
@@ -115,9 +100,6 @@ m = VarArray(
     dom=lambda i: range(nMachines) if len(machines[i]) == 0 else machines[i],
 )
 
-# makespan
-makespan = Var(dom=range(horizon + 1))
-
 satisfy(
     # no overlapping on machines (conditional on same machine)
     [
@@ -146,20 +128,6 @@ satisfy(
         heights=[1] * nTests,
         capacity=nMachines,
     ),
-    # makespan
-    [makespan >= end_time(test_intervals[i]) for i in range(nTests)],
 )
 
-minimize(makespan)
-
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        print(f"Makespan: {value(makespan)}")
-        print("\nSchedule:")
-        for i in range(nTests):
-            v = interval_value(test_intervals[i])
-            machine = value(m[i])
-            res_list = resources[i] if resources[i] else []
-            res_str = f" resources={list(res_list)}" if res_list else ""
-            print(f"  Test {i:2d} on M{machine}: [{v.start:4d}, {v.end:4d}){res_str}")
+minimize(Maximum(end_time(test_intervals[i]) for i in range(nTests)))

@@ -17,7 +17,7 @@ of machines for each job is flexible (to be determined by the solver).
 
 ## Execution
   python SchedulingOS.py -data=<datafile.json>
-  python SchedulingOS.py  (uses default data)
+  python SchedulingOS.py -data=<datafile.json> -solve
 
 ## Links
   - https://en.wikipedia.org/wiki/Open-shop_scheduling
@@ -27,18 +27,10 @@ of machines for each job is flexible (to be determined by the solver).
   realistic, scheduling, xcsp25
 """
 
-import json
-import os
+from pycsp3 import *
 
-from pycsp3 import (
-    Var, VarArray, satisfy, minimize, solve, SAT, OPTIMUM, value,
-    AllDifferent, Table, NoOverlap
-)
-
-# Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "GP-os-01.json")) as f:
-    durations = json.load(f)
+# Load data - uses pycsp3's -data= argument or falls back to default file
+durations = data or load_json_data("GP-os-01.json")
 
 horizon = sum(sum(t) for t in durations) + 1
 
@@ -57,12 +49,9 @@ d = VarArray(size=[n, m], dom=lambda i, j: durations[i])
 # sd[i][k] is the start time when machine k is used for job i
 sd = VarArray(size=[n, m], dom=range(horizon))
 
-# makespan is the objective
-makespan = Var(dom=range(horizon + 1))
-
 satisfy(
-    # operations must be non-overlapping within each job (sequential)
-    [s[i][j] + d[i][j] <= s[i][j + 1] for i in N for j in range(m - 1)],
+    # operations must be ordered on each job
+    [Increasing(s[i], lengths=d[i]) for i in N],
 
     # each machine must be used exactly once per job
     [AllDifferent(mc[i]) for i in N],
@@ -71,7 +60,7 @@ satisfy(
     [
         Table(
             scope=(mc[i][j], d[i][j]),
-            supports=enumerate(durations[i]),
+            supports=list(enumerate(durations[i])),
         )
         for j in M
         for i in N
@@ -92,20 +81,6 @@ satisfy(
     # redundant: minimum completion time
     [s[i][-1] + d[i][-1] >= sum(durations[i]) for i in N],
 
-    # makespan is the maximum end time
-    [makespan >= s[i][-1] + d[i][-1] for i in N],
 )
 
-minimize(makespan)
-
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        print(f"Makespan: {value(makespan)}")
-        for i in N:
-            print(f"Job {i}:")
-            for j in M:
-                start = value(s[i][j])
-                machine = value(mc[i][j])
-                dur = value(d[i][j])
-                print(f"  Op {j} on M{machine} (dur={dur}): [{start}, {start + dur})")
+minimize(Maximum(s[i][-1] + d[i][-1] for i in N))

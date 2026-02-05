@@ -471,6 +471,9 @@ def IntervalVarArray(
     return create_recursive(dims, [])
 
 
+    #TODO: add getitem with an expression as index
+
+
 def IntervalVarDict(
     keys: Sequence,
     *,

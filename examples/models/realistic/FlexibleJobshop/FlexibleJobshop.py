@@ -16,6 +16,7 @@ and the goal is to minimize the makespan.
 
 ## Execution
   python FlexibleJobshop.py -data=<datafile.json>
+  python FlexibleJobshop.py -data=<datafile.json> -solve
 
 ## Links
   - https://www.minizinc.org/challenge/2013/results/
@@ -25,29 +26,24 @@ and the goal is to minimize the makespan.
   realistic, scheduling, mzn13
 """
 
-import json
-import os
-
-from pycsp3 import Var, satisfy, minimize, solve, SAT, OPTIMUM, value
+from pycsp3 import *
 from pycsp3_scheduling import (
     IntervalVar,
     end_before_start,
     end_time,
     alternative,
     SeqCumulative,
-    interval_value,
 )
 
-# Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "easy01.json")) as f:
-    _data = json.load(f)
+# Load data - uses pycsp3's -data= argument or falls back to default file
+_data = data or load_json_data("easy01.json")
 
-nMachines = _data["nMachines"]
-tasks = _data["tasks"]
-options = _data["optionalTasks"]
-option_machines = _data["machines"]
-option_durations = _data["durations"]
+# pycsp3's data converts JSON to named tuples - use attribute access
+nMachines = _data.nMachines
+tasks = _data.tasks
+options = _data.optionalTasks
+option_machines = _data.machines
+option_durations = _data.durations
 
 nJobs, nTasks, nOptions = len(tasks), len(options), len(option_machines)
 J, T, O, M = range(nJobs), range(nTasks), range(nOptions), range(nMachines)
@@ -83,9 +79,6 @@ opt_intervals = [
     for o in O
 ]
 
-# makespan is the objective
-makespan = Var(dom=range(horizon + 1))
-
 satisfy(
     # precedence: tasks within a job must be sequential
     [
@@ -104,26 +97,6 @@ satisfy(
         )
         for m in M
     ],
-    # makespan
-    [makespan >= end_time(task_intervals[tasks[j][-1]]) for j in J],
 )
 
-minimize(makespan)
-
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        print(f"Makespan: {value(makespan)}")
-        for j in J:
-            print(f"Job {j}:")
-            for t in tasks[j]:
-                v = interval_value(task_intervals[t])
-                # Find which option was selected
-                selected_opt = None
-                for o in options[t]:
-                    ov = interval_value(opt_intervals[o])
-                    if ov is not None and ov.present:
-                        selected_opt = o
-                        break
-                machine = option_machines[selected_opt] if selected_opt is not None else "?"
-                print(f"  Task {t} on M{machine}: [{v.start}, {v.end})")
+minimize(Maximum(end_time(task_intervals[tasks[j][-1]]) for j in J))
