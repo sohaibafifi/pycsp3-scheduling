@@ -5,9 +5,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 MANIFEST="${1:-${PROJECT_ROOT}/benchmarks/results/jobs/manifest.tsv}"
-TIMEOUT="${TIMEOUT:-300}"
-SUITE="${SUITE:-full}"
-RESULTS_ROOT="${RESULTS_ROOT:-${PROJECT_ROOT}/benchmarks/results/jobs}"
+# Optional positional overrides (useful with oarsub):
+#   $2 -> TIMEOUT, $3 -> SUITE, $4 -> RESULTS_ROOT
+TIMEOUT="${2:-${TIMEOUT:-300}}"
+SUITE="${3:-${SUITE:-full}}"
+RESULTS_ROOT="${4:-${RESULTS_ROOT:-${PROJECT_ROOT}/benchmarks/results/jobs}}"
 TASK_ID="${OAR_ARRAY_INDEX:-${OAR_JOB_INDEX:-}}"
 
 if [[ -z "${TASK_ID}" ]]; then
