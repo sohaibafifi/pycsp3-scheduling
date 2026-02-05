@@ -664,6 +664,13 @@ def main():
     )
     args = parser.parse_args()
 
+    def _print_error_details(run_result: RunResult) -> None:
+        if run_result.status != "ERROR":
+            return
+        if run_result.error:
+            error_text = str(run_result.error).replace("\n", " | ")
+            print(f"      Error: {error_text}")
+
     # Load configuration
     config_path = PROJECT_ROOT / args.config
     with open(config_path) as f:
@@ -751,6 +758,7 @@ def main():
                     f"ctrs={classical_result.n_constraints}, "
                     f"time={classical_result.solve_time:.2f}s{obj_str})"
                 )
+                _print_error_details(classical_result)
 
                 # Run scheduling model
                 print(f"    Scheduling{rep_str}...", end=" ", flush=True)
@@ -777,6 +785,7 @@ def main():
                     f"sched: ivars={scheduling_result.n_interval_vars}, seqs={scheduling_result.n_sequences}, "
                     f"time={scheduling_result.solve_time:.2f}s{obj_str})"
                 )
+                _print_error_details(scheduling_result)
 
                 # Check objective match
                 if (
