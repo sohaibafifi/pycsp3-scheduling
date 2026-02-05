@@ -1,0 +1,431 @@
+{
+  "jobs": [
+    {
+      "duration": 0,
+      "successors": [
+        1,
+        2,
+        3
+      ],
+      "usages": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "duration": 4,
+      "successors": [
+        6,
+        8,
+        17
+      ],
+      "usages": [
+        2,
+        0,
+        8,
+        5
+      ]
+    },
+    {
+      "duration": 2,
+      "successors": [
+        9,
+        10,
+        14
+      ],
+      "usages": [
+        0,
+        10,
+        3,
+        10
+      ]
+    },
+    {
+      "duration": 1,
+      "successors": [
+        4,
+        14,
+        21
+      ],
+      "usages": [
+        10,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "duration": 2,
+      "successors": [
+        5,
+        13,
+        25
+      ],
+      "usages": [
+        9,
+        10,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 3,
+      "successors": [
+        16,
+        17,
+        20
+      ],
+      "usages": [
+        0,
+        4,
+        8,
+        0
+      ]
+    },
+    {
+      "duration": 9,
+      "successors": [
+        7,
+        12,
+        13
+      ],
+      "usages": [
+        5,
+        9,
+        7,
+        0
+      ]
+    },
+    {
+      "duration": 9,
+      "successors": [
+        15,
+        18,
+        23
+      ],
+      "usages": [
+        1,
+        6,
+        8,
+        0
+      ]
+    },
+    {
+      "duration": 3,
+      "successors": [
+        9,
+        14,
+        25
+      ],
+      "usages": [
+        0,
+        4,
+        0,
+        3
+      ]
+    },
+    {
+      "duration": 7,
+      "successors": [
+        11,
+        15,
+        30
+      ],
+      "usages": [
+        0,
+        10,
+        0,
+        1
+      ]
+    },
+    {
+      "duration": 10,
+      "successors": [
+        11,
+        15,
+        19
+      ],
+      "usages": [
+        8,
+        9,
+        2,
+        2
+      ]
+    },
+    {
+      "duration": 8,
+      "successors": [
+        13,
+        18
+      ],
+      "usages": [
+        0,
+        3,
+        3,
+        6
+      ]
+    },
+    {
+      "duration": 4,
+      "successors": [
+        18,
+        21,
+        22
+      ],
+      "usages": [
+        4,
+        9,
+        8,
+        0
+      ]
+    },
+    {
+      "duration": 6,
+      "successors": [
+        16,
+        23
+      ],
+      "usages": [
+        4,
+        9,
+        0,
+        7
+      ]
+    },
+    {
+      "duration": 3,
+      "successors": [
+        16,
+        24
+      ],
+      "usages": [
+        1,
+        5,
+        3,
+        2
+      ]
+    },
+    {
+      "duration": 9,
+      "successors": [
+        20,
+        27
+      ],
+      "usages": [
+        3,
+        9,
+        8,
+        10
+      ]
+    },
+    {
+      "duration": 6,
+      "successors": [
+        22,
+        28
+      ],
+      "usages": [
+        8,
+        1,
+        10,
+        6
+      ]
+    },
+    {
+      "duration": 8,
+      "successors": [
+        24,
+        30
+      ],
+      "usages": [
+        3,
+        1,
+        5,
+        4
+      ]
+    },
+    {
+      "duration": 4,
+      "successors": [
+        20,
+        27
+      ],
+      "usages": [
+        0,
+        0,
+        4,
+        9
+      ]
+    },
+    {
+      "duration": 3,
+      "successors": [
+        21,
+        22,
+        25
+      ],
+      "usages": [
+        6,
+        1,
+        6,
+        7
+      ]
+    },
+    {
+      "duration": 4,
+      "successors": [
+        26,
+        29
+      ],
+      "usages": [
+        10,
+        0,
+        6,
+        0
+      ]
+    },
+    {
+      "duration": 5,
+      "successors": [
+        23,
+        26
+      ],
+      "usages": [
+        0,
+        6,
+        0,
+        0
+      ]
+    },
+    {
+      "duration": 6,
+      "successors": [
+        27
+      ],
+      "usages": [
+        3,
+        8,
+        0,
+        5
+      ]
+    },
+    {
+      "duration": 7,
+      "successors": [
+        24,
+        28
+      ],
+      "usages": [
+        3,
+        0,
+        4,
+        5
+      ]
+    },
+    {
+      "duration": 9,
+      "successors": [
+        29
+      ],
+      "usages": [
+        5,
+        10,
+        10,
+        4
+      ]
+    },
+    {
+      "duration": 5,
+      "successors": [
+        26,
+        30
+      ],
+      "usages": [
+        0,
+        8,
+        4,
+        9
+      ]
+    },
+    {
+      "duration": 1,
+      "successors": [
+        28
+      ],
+      "usages": [
+        3,
+        7,
+        3,
+        7
+      ]
+    },
+    {
+      "duration": 4,
+      "successors": [
+        29
+      ],
+      "usages": [
+        0,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "duration": 5,
+      "successors": [
+        31
+      ],
+      "usages": [
+        6,
+        4,
+        2,
+        7
+      ]
+    },
+    {
+      "duration": 5,
+      "successors": [
+        31
+      ],
+      "usages": [
+        1,
+        7,
+        6,
+        0
+      ]
+    },
+    {
+      "duration": 1,
+      "successors": [
+        31
+      ],
+      "usages": [
+        6,
+        8,
+        3,
+        0
+      ]
+    },
+    {
+      "duration": 0,
+      "successors": [],
+      "usages": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "horizon": 153,
+  "renewable": [
+    21,
+    34,
+    27,
+    26
+  ],
+  "unrewable": []
+}

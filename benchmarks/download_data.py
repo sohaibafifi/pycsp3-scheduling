@@ -6,6 +6,9 @@ Downloads and prepares benchmark data from various sources:
 - Extracts XCSP ZIP files in PyCSP3-models
 - Downloads PSPLIB instances (RCPSP)
 - Converts PSPLIB .sm format to JSON
+- Converts AircraftLanding OR-Library .txt instances to JSON
+- Converts CyclicRCPSP .dzn instances to JSON
+- Converts SchedulingOS .dzn instances and copies xcsp25 JSON instances
 - Syncs data to classical model directories
 - Auto-updates config.yaml with discovered instances
 """
@@ -21,7 +24,10 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    yaml = None
 
 # Create SSL context that doesn't verify certificates (for PSPLIB)
 SSL_CONTEXT = ssl.create_default_context()
@@ -296,6 +302,299 @@ def convert_psplib_to_json(psplib_dir: Path, output_dir: Path, verbose: bool = T
     return count
 
 
+def parse_airland_txt(txt_file: Path) -> dict | None:
+    """
+    Parse OR-Library Aircraft Landing .txt format to JSON structure.
+
+    Format:
+    - nPlanes freezing_time
+    - For each plane:
+      appearance earliest target latest early_penalty late_penalty
+      followed by nPlanes separation integers
+    """
+    try:
+        tokens = txt_file.read_text(encoding="utf-8", errors="ignore").split()
+        if len(tokens) < 2:
+            return None
+
+        idx = 0
+        n_planes = int(tokens[idx])
+        idx += 1
+        _freezing_time = int(tokens[idx])  # unused by the current model
+        idx += 1
+
+        times = []
+        costs = []
+        separations = []
+
+        for _ in range(n_planes):
+            _appearance_time = int(tokens[idx])  # unused by the current model
+            idx += 1
+            earliest = int(tokens[idx])
+            idx += 1
+            target = int(tokens[idx])
+            idx += 1
+            latest = int(tokens[idx])
+            idx += 1
+            early_penalty = int(float(tokens[idx]) * 100)
+            idx += 1
+            late_penalty = int(float(tokens[idx]) * 100)
+            idx += 1
+
+            sep = [int(tokens[idx + j]) for j in range(n_planes)]
+            idx += n_planes
+
+            times.append({"earliest": earliest, "target": target, "latest": latest})
+            costs.append({"early_penalty": early_penalty, "late_penalty": late_penalty})
+            separations.append(sep)
+
+        if len(times) != n_planes or len(separations) != n_planes:
+            return None
+
+        return {
+            "P": n_planes,
+            "times": times,
+            "costs": costs,
+            "separations": separations,
+        }
+    except Exception as e:
+        print(f"  Error parsing {txt_file.name}: {e}")
+        return None
+
+
+def convert_airlands_to_json(source_dir: Path, output_dir: Path, verbose: bool = True) -> int:
+    """
+    Convert AircraftLanding OR-Library .txt instances to JSON files.
+
+    Returns:
+        Number of files converted.
+    """
+    if not source_dir.exists():
+        if verbose:
+            print(f"  Source directory not found: {source_dir}")
+        return 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+
+    for txt_file in sorted(source_dir.glob("airland*.txt")):
+        json_file = output_dir / f"{txt_file.stem}.json"
+        if json_file.exists():
+            continue
+
+        data = parse_airland_txt(txt_file)
+        if data is None:
+            if verbose:
+                print(f"  Failed to parse: {txt_file.name}")
+            continue
+
+        with open(json_file, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+
+        if verbose:
+            print(f"  Converted: {txt_file.name} -> {json_file.name}")
+        count += 1
+
+    return count
+
+
+def parse_cyclic_rcpsp_dzn(dzn_file: Path) -> dict | None:
+    """
+    Parse CyclicRCPSP .dzn instances to JSON structure.
+
+    Expected fields: n_res, rcap, n_tasks, rreq, n_prec, prec.
+    """
+    try:
+        content = dzn_file.read_text(encoding="utf-8", errors="ignore")
+        content = "\n".join(line.split("%", 1)[0] for line in content.splitlines())
+        assignments = {k: v.strip() for k, v in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?);", content, re.DOTALL)}
+
+        required = ("n_res", "rcap", "n_tasks", "rreq", "n_prec", "prec")
+        missing = [name for name in required if name not in assignments]
+        if missing:
+            print(f"  Missing fields in {dzn_file.name}: {', '.join(missing)}")
+            return None
+
+        def parse_int_list(expr: str) -> list[int]:
+            expr = expr.strip()
+            if not (expr.startswith("[") and expr.endswith("]")):
+                raise ValueError(f"Expected list expression, got: {expr[:30]}")
+            return [int(tok.strip()) for tok in expr[1:-1].split(",") if tok.strip()]
+
+        def parse_matrix(expr: str) -> list[list[int]]:
+            expr = expr.strip()
+            if not (expr.startswith("[|") and expr.endswith("|]")):
+                raise ValueError(f"Expected matrix expression, got: {expr[:30]}")
+            rows_raw = [row.strip() for row in expr[2:-2].split("|") if row.strip()]
+            rows = []
+            for row in rows_raw:
+                values = [int(tok.strip()) for tok in row.split(",") if tok.strip()]
+                rows.append(values)
+            return rows
+
+        n_res = int(assignments["n_res"])
+        capacities = parse_int_list(assignments["rcap"])
+        n_tasks = int(assignments["n_tasks"])
+        requirements = parse_matrix(assignments["rreq"])
+        n_prec = int(assignments["n_prec"])
+        precedences = parse_matrix(assignments["prec"])
+
+        if len(capacities) != n_res:
+            raise ValueError(f"Expected {n_res} capacities, found {len(capacities)}")
+        if len(requirements) != n_tasks:
+            raise ValueError(f"Expected {n_tasks} requirement rows, found {len(requirements)}")
+        if any(len(row) != n_res for row in requirements):
+            raise ValueError("Requirement matrix has invalid row width")
+        if len(precedences) != n_prec:
+            raise ValueError(f"Expected {n_prec} precedence rows, found {len(precedences)}")
+        if any(len(row) != 4 for row in precedences):
+            raise ValueError("Precedence matrix rows must have 4 integers")
+
+        precedences = [[i - 1, j - 1, latency, distance] for i, j, latency, distance in precedences]
+        if any(latency < 0 for _, _, latency, _ in precedences):
+            raise ValueError("Found negative precedence latency")
+
+        return {
+            "capacities": capacities,
+            "requirements": requirements,
+            "precedences": precedences,
+        }
+    except Exception as e:
+        print(f"  Error parsing {dzn_file.name}: {e}")
+        return None
+
+
+def convert_cyclic_rcpsp_to_json(source_dir: Path, output_dir: Path, verbose: bool = True) -> int:
+    """
+    Convert CyclicRCPSP .dzn instances to JSON files.
+
+    Returns:
+        Number of files converted.
+    """
+    if not source_dir.exists():
+        if verbose:
+            print(f"  Source directory not found: {source_dir}")
+        return 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+
+    for dzn_file in sorted(source_dir.glob("*.dzn")):
+        json_name = f"{dzn_file.stem.replace('_', '-')}.json"
+        json_file = output_dir / json_name
+        if json_file.exists():
+            continue
+
+        data = parse_cyclic_rcpsp_dzn(dzn_file)
+        if data is None:
+            if verbose:
+                print(f"  Failed to parse: {dzn_file.name}")
+            continue
+
+        with open(json_file, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+
+        if verbose:
+            print(f"  Converted: {dzn_file.name} -> {json_file.name}")
+        count += 1
+
+    return count
+
+
+def parse_scheduling_os_dzn(dzn_file: Path) -> list[list[int]] | None:
+    """
+    Parse SchedulingOS .dzn instances into a durations matrix.
+
+    Expected fields: n_jobs, n_machines, job_task_duration=array2d(jobs,tasks,[...]).
+    """
+    try:
+        content = dzn_file.read_text(encoding="utf-8", errors="ignore")
+        content = "\n".join(line.split("%", 1)[0] for line in content.splitlines())
+        assignments = {k: v.strip() for k, v in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?);", content, re.DOTALL)}
+
+        required = ("n_jobs", "n_machines", "job_task_duration")
+        missing = [name for name in required if name not in assignments]
+        if missing:
+            print(f"  Missing fields in {dzn_file.name}: {', '.join(missing)}")
+            return None
+
+        n_jobs = int(assignments["n_jobs"])
+        n_machines = int(assignments["n_machines"])
+
+        array_expr = assignments["job_task_duration"]
+        match = re.search(r"array2d\s*\(\s*jobs\s*,\s*tasks\s*,\s*\[(.*)\]\s*\)\s*$", array_expr, re.DOTALL)
+        if not match:
+            raise ValueError("Unsupported job_task_duration expression")
+        flat = [int(tok.strip()) for tok in match.group(1).split(",") if tok.strip()]
+
+        expected = n_jobs * n_machines
+        if len(flat) != expected:
+            raise ValueError(f"Expected {expected} durations, found {len(flat)}")
+
+        return [flat[i * n_machines:(i + 1) * n_machines] for i in range(n_jobs)]
+    except Exception as e:
+        print(f"  Error parsing {dzn_file.name}: {e}")
+        return None
+
+
+def convert_scheduling_os_data(source_dir: Path, output_dir: Path, verbose: bool = True) -> int:
+    """
+    Convert SchedulingOS datasets:
+    - root .dzn files are converted to .json
+    - xcsp25/*.json files are copied and normalized to matrix format
+
+    Returns:
+        Number of files written.
+    """
+    if not source_dir.exists():
+        if verbose:
+            print(f"  Source directory not found: {source_dir}")
+        return 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+
+    for dzn_file in sorted(source_dir.glob("*.dzn")):
+        json_file = output_dir / f"{dzn_file.stem}.json"
+        if json_file.exists():
+            continue
+
+        durations = parse_scheduling_os_dzn(dzn_file)
+        if durations is None:
+            if verbose:
+                print(f"  Failed to parse: {dzn_file.name}")
+            continue
+
+        with open(json_file, "w") as f:
+            json.dump(durations, f, indent=2)
+            f.write("\n")
+        if verbose:
+            print(f"  Converted: {dzn_file.name} -> {json_file.name}")
+        count += 1
+
+    xcsp25_dir = source_dir / "xcsp25"
+    if xcsp25_dir.exists():
+        for src_json in sorted(xcsp25_dir.glob("*.json")):
+            dst_json = output_dir / src_json.name
+            if dst_json.exists():
+                continue
+
+            payload = json.loads(src_json.read_text(encoding="utf-8"))
+            if isinstance(payload, dict) and "durations" in payload:
+                payload = payload["durations"]
+
+            with open(dst_json, "w") as f:
+                json.dump(payload, f, indent=2)
+                f.write("\n")
+            if verbose:
+                print(f"  Copied: {src_json.name} -> {dst_json.name}")
+            count += 1
+
+    return count
+
+
 def sync_data_to_classical(verbose: bool = True) -> int:
     """
     Sync JSON data files from scheduling models to classical model directories.
@@ -413,6 +712,9 @@ def update_config(verbose: bool = True) -> int:
     Returns:
         Number of models updated.
     """
+    if yaml is None:
+        raise RuntimeError("PyYAML is required for --update-config (try: uv run python benchmarks/download_data.py --update-config)")
+
     # Load existing config
     if CONFIG_PATH.exists():
         with open(CONFIG_PATH) as f:
@@ -468,6 +770,9 @@ def update_config(verbose: bool = True) -> int:
 
 def list_available_data(verbose: bool = True) -> None:
     """List all available benchmark data files."""
+    if yaml is None:
+        raise RuntimeError("PyYAML is required for --list (try: uv run python benchmarks/download_data.py --list)")
+
     scheduling_models = PROJECT_ROOT / "examples" / "models" / "realistic"
     classical_models = PROJECT_ROOT / "examples" / "PyCSP3-models" / "realistic"
     psplib_dir = PROJECT_ROOT / "examples" / "data" / "psplib"
@@ -633,6 +938,21 @@ def main():
         help="Sync data files to classical model directories",
     )
     parser.add_argument(
+        "--convert-airlands",
+        action="store_true",
+        help="Convert AircraftLanding OR-Library .txt files to JSON",
+    )
+    parser.add_argument(
+        "--convert-cyclic-rcpsp",
+        action="store_true",
+        help="Convert CyclicRCPSP .dzn files to JSON",
+    )
+    parser.add_argument(
+        "--convert-scheduling-os",
+        action="store_true",
+        help="Convert SchedulingOS .dzn and copy xcsp25 JSON files",
+    )
+    parser.add_argument(
         "--update-config",
         action="store_true",
         help="Update config.yaml with discovered model pairs and instances",
@@ -657,6 +977,8 @@ def main():
 
     # If no specific action, show help
     if not (args.all or args.extract_zips or args.psplib or args.convert_psplib
+            or args.convert_airlands or args.convert_cyclic_rcpsp
+            or args.convert_scheduling_os
             or args.sync or args.update_config):
         parser.print_help()
         print("\nTip: Use --all to perform all preparation steps")
@@ -681,6 +1003,27 @@ def main():
         limit = 0 if args.all else args.psplib_limit
         count = convert_psplib_to_json(psplib_dir, rcpsp_data, verbose, limit=limit)
         print(f"  Converted {count} new files")
+
+    if args.all or args.convert_airlands:
+        print("\nConverting AircraftLanding airlands .txt files to JSON...")
+        airlands_src = PROJECT_ROOT / "examples" / "PyCSP3-models" / "realistic" / "AircraftLanding" / "data" / "airlands"
+        aircraft_data = PROJECT_ROOT / "examples" / "models" / "realistic" / "AircraftLanding" / "data"
+        count = convert_airlands_to_json(airlands_src, aircraft_data, verbose)
+        print(f"  Converted {count} new files")
+
+    if args.all or args.convert_cyclic_rcpsp:
+        print("\nConverting CyclicRCPSP .dzn files to JSON...")
+        cyclic_src = PROJECT_ROOT / "examples" / "PyCSP3-models" / "realistic" / "CyclicRCPSP" / "data"
+        cyclic_data = PROJECT_ROOT / "examples" / "models" / "realistic" / "CyclicRCPSP" / "data"
+        count = convert_cyclic_rcpsp_to_json(cyclic_src, cyclic_data, verbose)
+        print(f"  Converted {count} new files")
+
+    if args.all or args.convert_scheduling_os:
+        print("\nConverting SchedulingOS data files...")
+        scheduling_os_src = PROJECT_ROOT / "examples" / "PyCSP3-models" / "realistic" / "SchedulingOS" / "data"
+        scheduling_os_data = PROJECT_ROOT / "examples" / "models" / "realistic" / "SchedulingOS" / "data"
+        count = convert_scheduling_os_data(scheduling_os_src, scheduling_os_data, verbose)
+        print(f"  Converted/Copied {count} new files")
 
     if args.all or args.sync:
         print("\nSyncing data to classical model directories...")

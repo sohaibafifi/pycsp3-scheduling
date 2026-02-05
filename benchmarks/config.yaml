@@ -9,18 +9,43 @@ models:
     data_dir: examples/models/realistic/AircraftLanding/data
     instances:
     - airland01.json
+    - airland02.json
+    - airland03.json
+    - airland04.json
+    - airland05.json
+    - airland06.json
+    - airland07.json
+    - airland08.json
+    - airland09.json
+    - airland10.json
+    - airland11.json
+    - airland12.json
+    - airland13.json
   CyclicRCPSP:
     classical: examples/PyCSP3-models/realistic/CyclicRCPSP/CyclicRCPSP.py
     scheduling: examples/models/realistic/CyclicRCPSP/CyclicRCPSP.py
     data_dir: examples/models/realistic/CyclicRCPSP/data
     instances:
+    - easy-3.json
     - easy-4.json
+    - easy-5.json
+    - easy-6.json
+    - hard-1.json
+    - hard-11.json
+    - hard-2.json
+    - medium-1.json
+    - medium-2.json
+    - medium-3.json
   FlexibleJobshop:
     classical: examples/PyCSP3-models/realistic/FlexibleJobshop/FlexibleJobshop.py
     scheduling: examples/models/realistic/FlexibleJobshop/FlexibleJobshop.py
     data_dir: examples/models/realistic/FlexibleJobshop/data
     instances:
     - easy01.json
+    - easy02.json
+    - hard19.json
+    - med04.json
+    - med10.json
   MRCPSP:
     classical: examples/PyCSP3-models/realistic/MRCPSP/MRCPSP.py
     scheduling: examples/models/realistic/MRCPSP/MRCPSP.py
@@ -2099,6 +2124,25 @@ models:
     data_dir: examples/models/realistic/SchedulingOS/data
     instances:
     - GP-os-01.json
+    - gp-04-01.json
+    - gp-04-05.json
+    - gp-05-01.json
+    - gp-05-05.json
+    - gp-06-01.json
+    - gp-06-05.json
+    - gp-07-01.json
+    - gp-07-05.json
+    - gp-08-01.json
+    - gp-08-05.json
+    - gp-09-01.json
+    - gp-09-05.json
+    - gp-10-01.json
+    - gp-10-05.json
+    - gp10-4.json
+    - j7per10-1.json
+    - j8per0-2.json
+    - tai20-4.json
+    - tai20-6.json
   TestScheduling:
     classical: examples/PyCSP3-models/realistic/TestScheduling/TestScheduling.py
     scheduling: examples/models/realistic/TestScheduling/TestScheduling.py

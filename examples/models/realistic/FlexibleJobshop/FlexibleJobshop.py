@@ -17,6 +17,7 @@ and the goal is to minimize the makespan.
 ## Execution
   python FlexibleJobshop.py -data=<datafile.json>
   python FlexibleJobshop.py -data=<datafile.json> -solve
+  python data/convert_dzn_to_json.py --input-dir=<folder-with-dzn> --output-dir=data
 
 ## Links
   - https://www.minizinc.org/challenge/2013/results/
