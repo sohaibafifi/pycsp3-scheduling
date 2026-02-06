@@ -39,19 +39,18 @@ from pycsp3_scheduling import (
 # Load data - uses pycsp3's -data= argument or falls back to default file
 _data = data or load_json_data("easy01.json")
 
-# pycsp3's data converts JSON to named tuples - use attribute access
-nMachines, tasks, options, option_machines, option_durations = _data.nMachines, _data.tasks, _data.options, _data.option_machines, _data.option_durations
+nMachines, tasks, options, option_machines, durations = data or load_json_data("easy01.json")
 
 nJobs, nTasks, nOptions = len(tasks), len(options), len(option_machines)
 J, T, O, M = range(nJobs), range(nTasks), range(nOptions), range(nMachines)
 
-# Compute auxiliary information
 siblings = [next(tasks[j] for j in J if t in tasks[j]) for t in T]
-minDurations = [min(option_durations[options[t]]) for t in T]
-maxDurations = [max(option_durations[options[t]]) for t in T]
+minDurations = [min(durations[options[t]]) for t in T]
+maxDurations = [max(durations[options[t]]) for t in T]
 minStarts = [sum(minDurations[k] for k in siblings[t] if k < t) for t in T]
-horizon = sum(option_durations)
-maxStarts = [horizon - sum(minDurations[k] for k in siblings[t] if k >= t) for t in T]
+maxStarts = [sum(durations) - sum(minDurations[k] for k in siblings[t] if k >= t) for t in T]
+
+horizon = sum(durations)
 
 taskForOption = [next(t for t in T if o in options[t]) for o in O]
 
@@ -59,7 +58,7 @@ taskForOption = [next(t for t in T if o in options[t]) for o in O]
 task_intervals = [IntervalVar(start=(minStarts[t], maxStarts[t]), size=(minDurations[t], maxDurations[t]), name=f"task_{t}") for t in T]
 
 # opt_intervals[o] is the optional interval for option o
-opt_intervals = [IntervalVar( start=(minStarts[taskForOption[o]], maxStarts[taskForOption[o]]), size=option_durations[o], optional=True, name=f"opt_{o}") for o in O]
+opt_intervals = [IntervalVar( start=(minStarts[taskForOption[o]], maxStarts[taskForOption[o]]), size=durations[o], optional=True, name=f"opt_{o}") for o in O]
 
 satisfy(
     # precedence: tasks within a job must be sequential

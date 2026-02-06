@@ -33,11 +33,19 @@ from pycsp3_scheduling import (
 )
 
 # Load data - uses pycsp3's -data= argument or falls back to default file
-_data = data or load_json_data("j030-01-01.json")
+jobs, horizon, capacities, _ = data or load_json_data("j030-01-01.json")
 
-# pycsp3's data converts JSON to named tuples - use attribute access
-jobs = [(j.duration, j.successors, j.usages) for j in _data.jobs]
-horizon, capacities  = _data.horizon, _data.capacities
+durations, successors, quantities = zip(*jobs)  # [job.duration for job in jobs]
+nJobs = len(jobs)
+
+
+# job entries may be named tuples (duration, successors, usages) or plain tuples
+jobs = [
+    (j.duration, j.successors, j.usages)
+    if hasattr(j, "duration")
+    else (j[0], j[1], j[2])
+    for j in jobs
+]
 
 durations, successors, quantities = zip(*jobs)
 nJobs, nResources = len(jobs), len(capacities)
