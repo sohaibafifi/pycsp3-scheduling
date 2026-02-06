@@ -37,22 +37,13 @@ _data = data or load_json_data("j030-01-01.json")
 
 # pycsp3's data converts JSON to named tuples - use attribute access
 jobs = [(j.duration, j.successors, j.usages) for j in _data.jobs]
-horizon = _data.horizon
-capacities = _data.renewable
+horizon, capacities  = _data.horizon, _data.capacities
 
 durations, successors, quantities = zip(*jobs)
-nJobs = len(jobs)
-nResources = len(capacities)
+nJobs, nResources = len(jobs), len(capacities)
 
 # task_intervals[i] is the interval for job i
-task_intervals = [
-    IntervalVar(
-        start=(0, 0) if i == 0 else (0, horizon),
-        size=durations[i],
-        name=f"job_{i}",
-    )
-    for i in range(nJobs)
-]
+task_intervals = [IntervalVar(start=(0, 0) if i == 0 else (0, horizon), size=durations[i], name=f"job_{i}") for i in range(nJobs)]
 
 satisfy(
     # precedence constraints

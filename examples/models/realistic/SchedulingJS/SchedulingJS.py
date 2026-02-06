@@ -36,40 +36,25 @@ from pycsp3_scheduling import (
 jobs = data or load_json_data("e0ddr1-0.json")
 
 durations, resources, release_dates, due_dates = zip(*jobs)
-assert all(len(t) == len(durations[0]) for t in durations) and all(
-    len(t) == len(durations[0]) for t in resources
-)
+assert all(len(t) == len(durations[0]) for t in durations) and all(len(t) == len(durations[0]) for t in resources)
+
 
 n, m = len(jobs), len(durations[0])
 
-horizon = (
-    max(due_dates)
-    if all(v != -1 for v in due_dates)
-    else sum(sum(t) for t in durations)
-)
+horizon = max(due_dates) if all(v != -1 for v in due_dates) else sum(sum(t) for t in durations)
+
 
 # ops[i][j] is the interval for the jth operation of the ith job
-ops = [
-    [
-        IntervalVar(
+ops = [[IntervalVar(
             start=(release_dates[i], horizon),
             end=(0, due_dates[i] if due_dates[i] != -1 else horizon),
             size=durations[i][j],
             name=f"op_{i}_{j}",
-        )
-        for j in range(m)
-    ]
-    for i in range(n)
-]
+        ) for j in range(m)]
+    for i in range(n)]
 
 # Sequences for each machine
-sequences = [
-    SequenceVar(
-        intervals=[ops[i][resources[i].index(k)] for i in range(n)],
-        name=f"machine_{k}",
-    )
-    for k in range(m)
-]
+sequences = [SequenceVar(intervals=[ops[i][resources[i].index(k)] for i in range(n)], name=f"machine_{k}") for k in range(m)]
 
 satisfy(
     # operations must be ordered on each job

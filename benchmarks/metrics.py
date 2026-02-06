@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Any
 
 SUCCESS_STATUSES = {"SAT", "OPTIMUM", "UNSAT"}
-OBJECTIVE_STATUSES = {"OPTIMUM"}
 # For incumbent quality, objective snapshots are meaningful on these statuses.
 OBJECTIVE_SNAPSHOT_STATUSES = {"SAT", "OPTIMUM", "TIMEOUT"}
+# Objective comparability follows snapshot comparability (not only proved optimum).
+OBJECTIVE_STATUSES = OBJECTIVE_SNAPSHOT_STATUSES
 
 
 def compare_objective_values(

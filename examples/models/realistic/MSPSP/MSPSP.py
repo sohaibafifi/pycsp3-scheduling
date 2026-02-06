@@ -22,81 +22,35 @@ to model MSPSP where workers have skills and tasks require specific skills.
   realistic, scheduling, mzn12
 """
 
-import json
-import os
 from itertools import combinations
 
-from pycsp3 import (
-    Var,
-    VarArray,
-    Cumulative,
-    Sum,
-    satisfy,
-    minimize,
-    solve,
-    SAT,
-    OPTIMUM,
-    value,
-)
+from pycsp3 import *
 from pycsp3_scheduling import (
     IntervalVar,
     end_before_start,
     start_time,
     end_time,
     SeqCumulative,
-    interval_value,
 )
 
-# Load data
-_data_dir = os.path.join(os.path.dirname(__file__), "data")
-with open(os.path.join(_data_dir, "easy-01.json")) as f:
-    _data = json.load(f)
+# Load data - uses pycsp3's -data= argument or falls back to default file
+_data = data or load_json_data("easy-01.json")
 
-skills = _data["skills"]
-durations = _data["durations"]
-requirements = _data["requirements"]
-successors = _data["successors"]
+skills, durations, requirements, successors = data or load_json_data("easy-01.json")
 
 nWorkers, nTasks, nSkills = len(skills), len(durations), len(requirements)
 
-# Resource capacity: count of workers per skill
 rc = [len([j for j in range(nWorkers) if i in skills[j]]) for i in range(nSkills)]
-
-# Possible workers for each task (workers with at least one required skill)
-possibleWorkers = [
-    [j for j in range(nWorkers) if len([k for k in skills[j] if requirements[k][i] > 0]) > 0]
-    for i in range(nTasks)
-]
-
-# Tasks per worker
-WTasks = [
-    [i for i in range(nTasks) if len([k for k in skills[j] if requirements[k][i] > 0]) > 0]
-    for j in range(nWorkers)
-]
-
-# Tasks per skill
+possibleWorkers = [[j for j in range(nWorkers) if len([k for k in skills[j] if requirements[k][i] > 0]) > 0] for i in range(nTasks)]
+WTasks = [[i for i in range(nTasks) if len([k for k in skills[j] if requirements[k][i] > 0]) > 0] for j in range(nWorkers)]
 RTasks = [[i for i in range(nTasks) if requirements[k][i] > 0] for k in range(nSkills)]
+overlap_attention = [(i, j) for i, j in combinations(nTasks, 2) if j not in successors[i] and i not in successors[j]
+                     and len([k for k in range(nSkills) if requirements[k][i] + requirements[k][j] > rc[k]]) > 0]
+horizon = sum(durations)  # trivial upper bound
 
-# Pairs of tasks that might conflict due to resource scarcity
-overlap_attention = [
-    (i, j)
-    for i, j in combinations(nTasks, 2)
-    if j not in successors[i]
-    and i not in successors[j]
-    and len([k for k in range(nSkills) if requirements[k][i] + requirements[k][j] > rc[k]]) > 0
-]
-
-horizon = sum(durations)
 
 # task_intervals[i] is the interval for task i
-task_intervals = [
-    IntervalVar(
-        start=(0, horizon),
-        size=durations[i],
-        name=f"task_{i}",
-    )
-    for i in range(nTasks)
-]
+task_intervals = [IntervalVar(start=(0, horizon), size=durations[i], name=f"task_{i}") for i in range(nTasks)]
 
 # w[j][i] is 1 if worker j is assigned to task i
 w = VarArray(size=[nWorkers, nTasks], dom={0, 1})
@@ -127,8 +81,7 @@ satisfy(
             lengths=[durations[i] for i in WTasks[j]],
             heights=[w[j][i] for i in WTasks[j]],
         ) <= 1
-        for j in range(nWorkers)
-        if len(WTasks[j]) > 1
+        for j in range(nWorkers) if len(WTasks[j]) > 1
     ],
     # tasks that cannot overlap due to resource constraints
     [
@@ -151,13 +104,3 @@ satisfy(
 )
 
 minimize(z)
-
-# --- Solution output ---
-if __name__ == "__main__":
-    if solve() in (SAT, OPTIMUM):
-        print(f"Project Duration: {value(z)}")
-        print("\nSchedule:")
-        for i in range(nTasks):
-            v = interval_value(task_intervals[i])
-            assigned = [j for j in range(nWorkers) if value(w[j][i]) == 1]
-            print(f"  Task {i:2d}: [{v.start:3d}, {v.end:3d}) workers={assigned}")

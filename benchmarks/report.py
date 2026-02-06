@@ -635,25 +635,63 @@ def try_generate_plots(
         x_obj = np.arange(len(obj_models))
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        ax.bar(
+        # Normalize per model pair so all bars are on a 0-100 scale.
+        # 100 = higher (worse) cost within the classical/scheduling pair.
+        normalized_classical = []
+        normalized_scheduling = []
+        for c_val, s_val in zip(classical_obj, scheduling_obj):
+            pair_max = max(c_val, s_val)
+            if pair_max <= 0:
+                normalized_classical.append(0.0)
+                normalized_scheduling.append(0.0)
+            else:
+                normalized_classical.append(100.0 * c_val / pair_max)
+                normalized_scheduling.append(100.0 * s_val / pair_max)
+
+        classical_bars = ax.bar(
             x_obj - width / 2,
-            classical_obj,
+            normalized_classical,
             width,
             label="Classical",
             color="steelblue",
         )
-        ax.bar(
+        scheduling_bars = ax.bar(
             x_obj + width / 2,
-            scheduling_obj,
+            normalized_scheduling,
             width,
             label="Scheduling",
             color="coral",
         )
-        ax.set_ylabel("Average Objective (lower is better)")
+        ax.set_ylabel("Normalized Cost (0-100, lower is better)")
         ax.set_xticks(x_obj)
         ax.set_xticklabels(obj_models, rotation=45, ha="right")
-        ax.set_title("Average Objective Comparison")
+        ax.set_title("Average Objective Comparison (Normalized)")
+        ax.set_ylim(0, 110)
+        ax.set_yticks(np.arange(0, 101, 10))
         ax.legend()
+
+        def _fmt_obj_label(value: float) -> str:
+            if float(value).is_integer():
+                return f"{int(value):,}"
+            if abs(value) >= 1000:
+                return f"{value:,.1f}"
+            return f"{value:.2f}"
+
+        # Show original (non-normalized) objective values above bars.
+        for bars, raw_values in (
+            (classical_bars, classical_obj),
+            (scheduling_bars, scheduling_obj),
+        ):
+            for bar, raw_value in zip(bars, raw_values):
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 1.0,
+                    _fmt_obj_label(raw_value),
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                    rotation=90,
+                )
 
         plt.tight_layout()
         plt.savefig(output_dir / "objective_avg_comparison.pdf")

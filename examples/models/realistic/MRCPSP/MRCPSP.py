@@ -38,12 +38,7 @@ from pycsp3_scheduling import (
 _data = data or load_json_data("j30-15-05.json")
 
 # pycsp3's data converts JSON to named tuples - use attribute access
-capacities = _data.resources.capacities
-types = _data.resources.types
-mode_durations = _data.mode_durations
-modes = _data.tasks.modes
-successors = _data.tasks.successors
-requirements_raw = _data.tasks.requirements
+capacities, types, mode_durations, modes, successors, requirements_raw = _data.resources.capacities, _data.resources.types, _data.mode_durations, _data.tasks.modes, _data.tasks.successors, _data.tasks.requirements
 
 nResources, nTasks, nModes = len(capacities), len(modes), len(mode_durations)
 duration_by_mode = cp_array(mode_durations)
@@ -55,28 +50,14 @@ non_renewable = [k for k in range(nResources) if types[k] == 2]
 UB = sum(max(mode_durations[m] for m in modes[i]) for i in range(nTasks))
 
 # task_intervals[i] is the main interval for task i
-task_intervals = [
-    IntervalVar(
-        start=(0, UB),
-        size=(
-            min(mode_durations[m] for m in modes[i]),
-            max(mode_durations[m] for m in modes[i]),
-        ),
-        name=f"task_{i}",
-    )
-    for i in range(nTasks)
-]
+task_intervals = [IntervalVar(start=(0, UB),
+                            size=(
+                                min(mode_durations[m] for m in modes[i]),
+                                max(mode_durations[m] for m in modes[i]),
+                            ),name=f"task_{i}")for i in range(nTasks)]
 
 # mode_intervals[m] is the optional interval for mode m
-mode_intervals = [
-    IntervalVar(
-        start=(0, UB),
-        size=mode_durations[m],
-        optional=True,
-        name=f"mode_{m}",
-    )
-    for m in range(nModes)
-]
+mode_intervals = [IntervalVar( start=(0, UB), size=mode_durations[m], optional=True, name=f"mode_{m}") for m in range(nModes)]
 
 # tm[i] is the mode selected for task i
 tm = VarArray(size=nTasks, dom=lambda i: modes[i])

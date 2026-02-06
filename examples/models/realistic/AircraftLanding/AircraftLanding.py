@@ -38,14 +38,7 @@ P = range(nPlanes)
 # =============================================================================
 
 # Landing interval for each plane
-landing = [
-    IntervalVar(
-        start=(earliest[i], latest[i]),
-        size=1,
-        name=f"plane_{i}",
-    )
-    for i in P
-]
+landing = [IntervalVar(start=(earliest[i], latest[i]), size=1,name=f"plane_{i}") for i in P]
 
 # Earliness and tardiness (auxiliary for objective)
 erl = VarArray(size=nPlanes, dom=lambda i: range(target[i] - earliest[i] + 1))

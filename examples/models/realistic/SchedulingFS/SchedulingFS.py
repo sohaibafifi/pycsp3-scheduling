@@ -42,25 +42,12 @@ n, m = len(durations), len(durations[0])
 
 # ops[i][j] is the interval for machine j of job i
 ops = [
-    [
-        IntervalVar(
-            start=(0, horizon),
-            size=durations[i][j],
-            name=f"op_{i}_{j}",
-        )
-        for j in range(m)
-    ]
+    [IntervalVar(start=(0, horizon),size=durations[i][j], name=f"op_{i}_{j}") for j in range(m)]
     for i in range(n)
 ]
 
 # Sequences for each machine
-sequences = [
-    SequenceVar(
-        intervals=[ops[i][j] for i in range(n)],
-        name=f"machine_{j}",
-    )
-    for j in range(m)
-]
+sequences = [SequenceVar(intervals=[ops[i][j] for i in range(n)], name=f"machine_{j}") for j in range(m)]
 
 satisfy(
     # operations must be ordered on each job (flow shop: same route for all jobs)

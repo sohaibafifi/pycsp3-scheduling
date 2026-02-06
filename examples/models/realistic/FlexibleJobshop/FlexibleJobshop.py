@@ -40,11 +40,7 @@ from pycsp3_scheduling import (
 _data = data or load_json_data("easy01.json")
 
 # pycsp3's data converts JSON to named tuples - use attribute access
-nMachines = _data.nMachines
-tasks = _data.tasks
-options = _data.optionalTasks
-option_machines = _data.machines
-option_durations = _data.durations
+nMachines, tasks, options, option_machines, option_durations = _data.nMachines, _data.tasks, _data.options, _data.option_machines, _data.option_durations
 
 nJobs, nTasks, nOptions = len(tasks), len(options), len(option_machines)
 J, T, O, M = range(nJobs), range(nTasks), range(nOptions), range(nMachines)
@@ -60,25 +56,10 @@ maxStarts = [horizon - sum(minDurations[k] for k in siblings[t] if k >= t) for t
 taskForOption = [next(t for t in T if o in options[t]) for o in O]
 
 # task_intervals[t] is the main interval for task t
-task_intervals = [
-    IntervalVar(
-        start=(minStarts[t], maxStarts[t]),
-        size=(minDurations[t], maxDurations[t]),
-        name=f"task_{t}",
-    )
-    for t in T
-]
+task_intervals = [IntervalVar(start=(minStarts[t], maxStarts[t]), size=(minDurations[t], maxDurations[t]), name=f"task_{t}") for t in T]
 
 # opt_intervals[o] is the optional interval for option o
-opt_intervals = [
-    IntervalVar(
-        start=(minStarts[taskForOption[o]], maxStarts[taskForOption[o]]),
-        size=option_durations[o],
-        optional=True,
-        name=f"opt_{o}",
-    )
-    for o in O
-]
+opt_intervals = [IntervalVar( start=(minStarts[taskForOption[o]], maxStarts[taskForOption[o]]), size=option_durations[o], optional=True, name=f"opt_{o}") for o in O]
 
 satisfy(
     # precedence: tasks within a job must be sequential

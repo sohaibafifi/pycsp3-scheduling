@@ -10,6 +10,7 @@ import glob
 import json
 from pathlib import Path
 
+from metrics import count_loc
 from report import generate_comparison_report
 
 
@@ -67,6 +68,47 @@ def _dedupe_results(results: list[dict]) -> list[dict]:
     return deduped
 
 
+def _load_model_paths(config_path: Path) -> dict[tuple[str, str], str]:
+    try:
+        import yaml
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            "PyYAML is required for --refresh-loc. Use `uv run python ...`."
+        ) from e
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    model_paths: dict[tuple[str, str], str] = {}
+    for model_name, model_cfg in (config.get("models", {}) or {}).items():
+        for model_type in ("classical", "scheduling"):
+            model_path = model_cfg.get(model_type)
+            if model_path:
+                model_paths[(str(model_name), model_type)] = str(model_path)
+    return model_paths
+
+
+def _refresh_loc(
+    results: list[dict], config_path: Path, project_root: Path
+) -> tuple[int, int]:
+    model_paths = _load_model_paths(config_path)
+    updated = 0
+    missing = 0
+
+    for row in results:
+        key = (str(row.get("model_name", "")), str(row.get("model_type", "")))
+        rel_path = model_paths.get(key)
+        if not rel_path:
+            missing += 1
+            continue
+        loc = count_loc(project_root / rel_path)
+        if row.get("loc") != loc:
+            row["loc"] = loc
+            updated += 1
+
+    return updated, missing
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Consolidate benchmark result files and regenerate reports"
@@ -83,9 +125,19 @@ def main() -> int:
         help="Path to merged output JSON file",
     )
     parser.add_argument(
+        "--config",
+        default="benchmarks/config.yaml",
+        help="Benchmark config (used by --refresh-loc)",
+    )
+    parser.add_argument(
         "--no-dedupe",
         action="store_true",
         help="Keep duplicate entries instead of deduplicating",
+    )
+    parser.add_argument(
+        "--refresh-loc",
+        action="store_true",
+        help="Recompute LOC from current model files before writing merged output",
     )
     parser.add_argument(
         "--no-report",
@@ -122,6 +174,12 @@ def main() -> int:
     if not args.no_dedupe:
         merged = _dedupe_results(merged)
         print(f"After dedupe: {len(merged)} rows")
+
+    if args.refresh_loc:
+        project_root = Path(__file__).parent.parent.resolve()
+        config_path = project_root / args.config
+        updated, missing = _refresh_loc(merged, config_path, project_root)
+        print(f"LOC refreshed: {updated} rows updated ({missing} rows unmatched)")
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)

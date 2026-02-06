@@ -38,9 +38,8 @@ from pycsp3_scheduling import (
 _data = data or load_json_data("easy-4.json")
 
 # pycsp3's data converts JSON to named tuples - use attribute access
-capacities = _data.capacities
-requirements = _data.requirements
-precedences = _data.precedences
+capacities, requirements, precedences = _data.capacities, _data.requirements, _data.precedences
+
 
 nResources, nTasks, nPrecedences = len(capacities), len(requirements), len(precedences)
 
@@ -54,14 +53,7 @@ horizon = sum(precedences[i][2] for i in range(nPrecedences))
 resources = [[i for i in T if requirements[i][r] > 0 and d[i] > 0] for r in R]
 
 # task_intervals[i] is the interval for task i
-task_intervals = [
-    IntervalVar(
-        start=(0, horizon),
-        size=d[i],
-        name=f"task_{i}",
-    )
-    for i in T
-]
+task_intervals = [IntervalVar(start=(0, horizon), size=d[i], name=f"task_{i}") for i in T]
 
 # k[i] is the iteration of the ith task
 k = VarArray(size=nTasks, dom=range(nTasks + 1))
@@ -115,7 +107,4 @@ satisfy(
     k[0] == 0,
 )
 
-minimize(
-    # minimizing period * horizon + makespan
-    period * horizon + z
-)
+minimize(period * horizon + z)
