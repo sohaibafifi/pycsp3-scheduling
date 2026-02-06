@@ -96,6 +96,7 @@ import time
 MODEL_PATH = "{model_path}"
 DATA_PATH = "{data_path}"
 OUTPUT_PATH = "{output_json}"
+RUN_DIR = os.path.dirname(OUTPUT_PATH) or "."
 
 def save_result(result):
     """Save result to output file."""
@@ -117,7 +118,8 @@ result = {{
 # Setup - first generate XML without solving
 sys.argv = [MODEL_PATH, "-data=" + DATA_PATH]
 sys.path.insert(0, "{PROJECT_ROOT}")
-os.chdir("{PROJECT_ROOT}")
+os.makedirs(RUN_DIR, exist_ok=True)
+os.chdir(RUN_DIR)
 
 import glob as g
 
@@ -285,6 +287,7 @@ import time
 MODEL_PATH = "{model_path}"
 DATA_PATH = "{data_path}"
 OUTPUT_PATH = "{output_json}"
+RUN_DIR = os.path.dirname(OUTPUT_PATH) or "."
 
 def save_result(result):
     """Save result to output file."""
@@ -311,7 +314,8 @@ result = {{
 # Setup - first generate model without solving
 sys.argv = [MODEL_PATH, "-data=" + DATA_PATH]
 sys.path.insert(0, "{PROJECT_ROOT}")
-os.chdir("{PROJECT_ROOT}")
+os.makedirs(RUN_DIR, exist_ok=True)
+os.chdir(RUN_DIR)
 
 import glob as g
 
@@ -357,6 +361,7 @@ try:
     xml_files = glob.glob("*.xml")
     if xml_files:
         xml_file = max(xml_files, key=os.path.getmtime)
+        result["_debug_xml_file"] = xml_file  # Debug info
         from xml.etree import ElementTree as ET
         tree = ET.parse(xml_file)
         root = tree.getroot()
