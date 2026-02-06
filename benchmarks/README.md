@@ -101,7 +101,7 @@ Slurm (`sbatch`):
 ```bash
 sbatch \
   --array=1-"${N}" \
-  --export=ALL,TIMEOUT=600,SUITE=full,RESULTS_ROOT="$PWD/benchmarks/results/jobs" \
+  --export=ALL,SUITE=full,RESULTS_ROOT="$PWD/benchmarks/results/jobs" \
   benchmarks/cluster/run_sbatch_array.sh \
   "$PWD/benchmarks/results/jobs/manifest.tsv"
 ```
@@ -130,6 +130,8 @@ MPLBACKEND=Agg uv run python benchmarks/consolidate_results.py \
 Notes:
 - Use `MPLBACKEND=Agg` on headless nodes when generating plots.
 - If you intentionally rerun identical `(model, instance, repetition)` rows, add `--no-dedupe`.
+- If `TIMEOUT` is not explicitly provided, cluster launchers use `benchmarks/config.yaml`.
+- To override timeout from launcher env, set `TIMEOUT=<seconds>` explicitly.
 
 ## Report Generation
 

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 MANIFEST="${1:-${PROJECT_ROOT}/benchmarks/results/jobs/manifest.tsv}"
-TIMEOUT="${TIMEOUT:-300}"
+TIMEOUT="${TIMEOUT:-}"
 SUITE="${SUITE:-full}"
 RESULTS_ROOT="${RESULTS_ROOT:-${PROJECT_ROOT}/benchmarks/results/jobs}"
 
@@ -37,12 +37,19 @@ mkdir -p "${TASK_OUT}"
 cd "${PROJECT_ROOT}"
 echo "[SLURM ${SLURM_ARRAY_TASK_ID}] ${MODEL} / ${INSTANCE} (rep=${REP_OFFSET})"
 
-uv run python benchmarks/runner.py \
-  --suite="${SUITE}" \
-  --model="${MODEL}" \
-  --instance="${INSTANCE}" \
-  --timeout="${TIMEOUT}" \
-  --repetitions=1 \
-  --repetition-offset="${REP_OFFSET}" \
-  --output="${TASK_OUT}" \
+CMD=(
+  uv run python benchmarks/runner.py
+  --suite="${SUITE}"
+  --model="${MODEL}"
+  --instance="${INSTANCE}"
+  --repetitions=1
+  --repetition-offset="${REP_OFFSET}"
+  --output="${TASK_OUT}"
   --no-report
+)
+
+if [[ -n "${TIMEOUT}" ]]; then
+  CMD+=(--timeout="${TIMEOUT}")
+fi
+
+"${CMD[@]}"

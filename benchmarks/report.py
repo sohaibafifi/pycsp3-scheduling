@@ -514,27 +514,37 @@ def try_generate_plots(
     x = np.arange(len(models))
     width = 0.35
 
-    # 1. Variable/Constraint Augmentation Bar Chart
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    # 1. Variable/Constraint augmentation merged chart (2 bars per model)
+    fig, ax = plt.subplots(figsize=(12, 6))
 
     var_augmentation = [c.var_augmentation * 100 for c in comparisons]
     ctr_augmentation = [c.constraint_augmentation * 100 for c in comparisons]
 
-    axes[0].bar(x, var_augmentation, color="steelblue", edgecolor="black")
-    axes[0].set_ylabel("Variable Augmentation (%)")
-    axes[0].set_xticks(x)
-    axes[0].set_xticklabels(models, rotation=45, ha="right")
-    axes[0].set_title("Model Compactness: Variables")
-    axes[0].axhline(y=0, color="black", linestyle="-", linewidth=0.5)
-    axes[0].set_ylim(min(0, min(var_augmentation) - 5), max(var_augmentation) + 5)
+    ax.bar(
+        x - width / 2,
+        var_augmentation,
+        width,
+        label="Variable Augmentation",
+        color="steelblue",
+        edgecolor="black",
+    )
+    ax.bar(
+        x + width / 2,
+        ctr_augmentation,
+        width,
+        label="Constraint Augmentation",
+        color="coral",
+        edgecolor="black",
+    )
+    ax.set_ylabel("Augmentation (%)")
+    ax.set_xticks(x)
+    ax.set_xticklabels(models, rotation=45, ha="right")
+    ax.set_title("Model Compactness: Variables vs Constraints")
+    ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5)
+    ax.legend()
 
-    axes[1].bar(x, ctr_augmentation, color="coral", edgecolor="black")
-    axes[1].set_ylabel("Constraint Augmentation (%)")
-    axes[1].set_xticks(x)
-    axes[1].set_xticklabels(models, rotation=45, ha="right")
-    axes[1].set_title("Model Compactness: Constraints")
-    axes[1].axhline(y=0, color="black", linestyle="-", linewidth=0.5)
-    axes[1].set_ylim(min(0, min(ctr_augmentation) - 5), max(ctr_augmentation) + 5)
+    combined = var_augmentation + ctr_augmentation
+    ax.set_ylim(min(0, min(combined) - 5), max(combined) + 5)
 
     plt.tight_layout()
     plt.savefig(output_dir / "size_comparison.pdf")

@@ -10,7 +10,7 @@ TASK_ID="${OAR_ARRAY_INDEX:-${OAR_JOB_INDEX:-}}"
 MODEL=""
 INSTANCE=""
 REP_OFFSET=""
-TIMEOUT="${TIMEOUT:-300}"
+TIMEOUT="${TIMEOUT:-}"
 SUITE="${SUITE:-full}"
 RESULTS_ROOT="${RESULTS_ROOT:-${DEFAULT_RESULTS_ROOT}}"
 
@@ -55,13 +55,19 @@ mkdir -p "${TASK_OUT}"
 cd "${PROJECT_ROOT}"
 echo "[OAR ${TASK_ID:-param}] ${MODEL} / ${INSTANCE} (rep=${REP_OFFSET})"
 
-
-python benchmarks/runner.py \
-  --suite="${SUITE}" \
-  --model="${MODEL}" \
-  --instance="${INSTANCE}" \
-  --timeout="${TIMEOUT}" \
-  --repetitions=1 \
-  --repetition-offset="${REP_OFFSET}" \
-  --output="${TASK_OUT}" \
+CMD=(
+  uv run python benchmarks/runner.py
+  --suite="${SUITE}"
+  --model="${MODEL}"
+  --instance="${INSTANCE}"
+  --repetitions=1
+  --repetition-offset="${REP_OFFSET}"
+  --output="${TASK_OUT}"
   --no-report
+)
+
+if [[ -n "${TIMEOUT}" ]]; then
+  CMD+=(--timeout="${TIMEOUT}")
+fi
+
+"${CMD[@]}"
