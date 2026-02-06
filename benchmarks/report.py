@@ -505,7 +505,12 @@ def try_generate_plots(
         print("  matplotlib not available, skipping plots")
         return False
 
-    models = [c.model_name for c in comparisons]
+    display_name = {
+        "SchedulingFS": "Flow-shop",
+        "SchedulingJS": "Job-shop",
+        "SchedulingOS": "Open-shop",
+    }
+    models = [display_name.get(c.model_name, c.model_name) for c in comparisons]
     x = np.arange(len(models))
     width = 0.35
 
@@ -612,7 +617,7 @@ def try_generate_plots(
     for c in comparisons:
         if c.classical_objective is None or c.scheduling_objective is None:
             continue
-        obj_models.append(c.model_name)
+        obj_models.append(display_name.get(c.model_name, c.model_name))
         classical_obj.append(c.classical_objective)
         scheduling_obj.append(c.scheduling_objective)
 
