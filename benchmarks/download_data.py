@@ -9,6 +9,8 @@ Downloads and prepares benchmark data from various sources:
 - Converts AircraftLanding OR-Library .txt instances to JSON
 - Converts CyclicRCPSP .dzn instances to JSON
 - Converts SchedulingOS .dzn instances and copies xcsp25 JSON instances
+- Converts MRCPSP .dzn instances to JSON
+- Converts MSPSP .dzn instances to JSON
 - Syncs data to classical model directories
 - Auto-updates config.yaml with discovered instances
 """
@@ -595,6 +597,254 @@ def convert_scheduling_os_data(source_dir: Path, output_dir: Path, verbose: bool
     return count
 
 
+def parse_mrcpsp_dzn(dzn_file: Path) -> dict | None:
+    """
+    Parse MRCPSP .dzn instances to JSON structure.
+
+    Expected fields: n_res, rcap, rtype, n_tasks, modes, succ, n_opt, dur, rreq.
+    """
+    try:
+        content = dzn_file.read_text(encoding="utf-8", errors="ignore")
+        content = "\n".join(line.split("%", 1)[0] for line in content.splitlines())
+        assignments = {k: v.strip() for k, v in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?);", content, re.DOTALL)}
+
+        required = ("n_res", "rcap", "rtype", "n_tasks", "modes", "succ", "n_opt", "dur", "rreq")
+        missing = [name for name in required if name not in assignments]
+        if missing:
+            print(f"  Missing fields in {dzn_file.name}: {', '.join(missing)}")
+            return None
+
+        def parse_int_list(expr: str) -> list[int]:
+            expr = expr.strip()
+            if not (expr.startswith("[") and expr.endswith("]")):
+                raise ValueError(f"Expected list expression, got: {expr[:30]}")
+            return [int(tok.strip()) for tok in expr[1:-1].split(",") if tok.strip()]
+
+        def parse_set_list(expr: str) -> list[list[int]]:
+            expr = expr.strip()
+            if not (expr.startswith("[") and expr.endswith("]")):
+                raise ValueError(f"Expected set-list expression, got: {expr[:30]}")
+            sets = []
+            for m in re.finditer(r"\{([^{}]*)\}", expr):
+                inner = m.group(1).strip()
+                values = [] if not inner else [int(tok.strip()) for tok in inner.split(",") if tok.strip()]
+                sets.append(values)
+            return sets
+
+        def parse_matrix(expr: str) -> list[list[int]]:
+            expr = expr.strip()
+            if not (expr.startswith("[|") and expr.endswith("|]")):
+                raise ValueError(f"Expected matrix expression, got: {expr[:30]}")
+            rows_raw = [row.strip() for row in expr[2:-2].split("|") if row.strip()]
+            rows = []
+            for row in rows_raw:
+                values = [int(tok.strip()) for tok in row.split(",") if tok.strip()]
+                rows.append(values)
+            return rows
+
+        n_res = int(assignments["n_res"])
+        capacities = parse_int_list(assignments["rcap"])
+        types = parse_int_list(assignments["rtype"])
+        n_tasks = int(assignments["n_tasks"])
+        modes = parse_set_list(assignments["modes"])
+        successors = parse_set_list(assignments["succ"])
+        n_opt = int(assignments["n_opt"])
+        mode_durations = parse_int_list(assignments["dur"])
+        requirements = parse_matrix(assignments["rreq"])
+
+        if len(capacities) != n_res or len(types) != n_res:
+            raise ValueError("Resource capacities/types length mismatch")
+        if len(modes) != n_tasks or len(successors) != n_tasks:
+            raise ValueError("Tasks modes/successors length mismatch")
+        if len(mode_durations) != n_opt:
+            raise ValueError(f"Expected {n_opt} mode durations, found {len(mode_durations)}")
+        if len(requirements) != n_res:
+            raise ValueError(f"Expected {n_res} requirement rows, found {len(requirements)}")
+        if any(len(row) != n_opt for row in requirements):
+            raise ValueError("Requirement matrix has invalid row width")
+
+        modes = [[v - 1 for v in row] for row in modes]
+        successors = [[v - 1 for v in row] for row in successors]
+
+        return {
+            "resources": {
+                "capacities": capacities,
+                "types": types,
+            },
+            "mode_durations": mode_durations,
+            "tasks": {
+                "modes": modes,
+                "successors": successors,
+                "requirements": requirements,
+            },
+        }
+    except Exception as e:
+        print(f"  Error parsing {dzn_file.name}: {e}")
+        return None
+
+
+def _mrcpsp_json_name_from_dzn(dzn_stem: str) -> str:
+    match = re.match(r"^(j\d+)_(\d+)_(\d+)$", dzn_stem)
+    if match:
+        prefix, a, b = match.groups()
+        return f"{prefix}-{int(a):02d}-{int(b):02d}.json"
+    return f"{dzn_stem.replace('_', '-')}.json"
+
+
+def convert_mrcpsp_to_json(source_dir: Path, output_dir: Path, verbose: bool = True) -> int:
+    """
+    Convert MRCPSP .dzn instances to JSON files.
+
+    Returns:
+        Number of files converted.
+    """
+    if not source_dir.exists():
+        if verbose:
+            print(f"  Source directory not found: {source_dir}")
+        return 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+
+    for dzn_file in sorted(source_dir.glob("*.dzn")):
+        json_file = output_dir / _mrcpsp_json_name_from_dzn(dzn_file.stem)
+        if json_file.exists():
+            continue
+
+        payload = parse_mrcpsp_dzn(dzn_file)
+        if payload is None:
+            if verbose:
+                print(f"  Failed to parse: {dzn_file.name}")
+            continue
+
+        with open(json_file, "w") as f:
+            json.dump(payload, f, indent=2)
+            f.write("\n")
+        if verbose:
+            print(f"  Converted: {dzn_file.name} -> {json_file.name}")
+        count += 1
+
+    return count
+
+
+def parse_mspsp_dzn(dzn_file: Path) -> dict | None:
+    """
+    Parse MSPSP .dzn instances to JSON structure.
+
+    Expected fields: n_skills, n_workers, has_skills, n_tasks, d, rr, suc.
+    """
+    try:
+        content = dzn_file.read_text(encoding="utf-8", errors="ignore")
+        content = "\n".join(line.split("%", 1)[0] for line in content.splitlines())
+        assignments = {k: v.strip() for k, v in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?);", content, re.DOTALL)}
+
+        required = ("n_skills", "n_workers", "has_skills", "n_tasks", "d", "rr", "suc")
+        missing = [name for name in required if name not in assignments]
+        if missing:
+            print(f"  Missing fields in {dzn_file.name}: {', '.join(missing)}")
+            return None
+
+        def parse_int_list(expr: str) -> list[int]:
+            expr = expr.strip()
+            if not (expr.startswith("[") and expr.endswith("]")):
+                raise ValueError(f"Expected list expression, got: {expr[:30]}")
+            return [int(tok.strip()) for tok in expr[1:-1].split(",") if tok.strip()]
+
+        def parse_set_list(expr: str) -> list[list[int]]:
+            expr = expr.strip()
+            if not (expr.startswith("[") and expr.endswith("]")):
+                raise ValueError(f"Expected set-list expression, got: {expr[:30]}")
+            sets = []
+            for m in re.finditer(r"\{([^{}]*)\}", expr):
+                inner = m.group(1).strip()
+                values = [] if not inner else [int(tok.strip()) for tok in inner.split(",") if tok.strip()]
+                sets.append(values)
+            return sets
+
+        def parse_matrix(expr: str) -> list[list[int]]:
+            expr = expr.strip()
+            if not (expr.startswith("[|") and expr.endswith("|]")):
+                raise ValueError(f"Expected matrix expression, got: {expr[:30]}")
+            rows_raw = [row.strip() for row in expr[2:-2].split("|") if row.strip()]
+            rows = []
+            for row in rows_raw:
+                values = [int(tok.strip()) for tok in row.split(",") if tok.strip()]
+                rows.append(values)
+            return rows
+
+        n_skills = int(assignments["n_skills"])
+        n_workers = int(assignments["n_workers"])
+        skills = parse_set_list(assignments["has_skills"])
+        n_tasks = int(assignments["n_tasks"])
+        durations = parse_int_list(assignments["d"])
+        requirements = parse_matrix(assignments["rr"])
+        successors = parse_set_list(assignments["suc"])
+
+        if len(skills) != n_workers:
+            raise ValueError(f"Expected {n_workers} workers, found {len(skills)}")
+        if len(durations) != n_tasks:
+            raise ValueError(f"Expected {n_tasks} durations, found {len(durations)}")
+        if len(requirements) != n_skills:
+            raise ValueError(f"Expected {n_skills} requirement rows, found {len(requirements)}")
+        if any(len(row) != n_tasks for row in requirements):
+            raise ValueError("Requirement matrix has invalid row width")
+        if len(successors) != n_tasks:
+            raise ValueError(f"Expected {n_tasks} successor rows, found {len(successors)}")
+
+        skills = [[v - 1 for v in row] for row in skills]
+        successors = [[v - 1 for v in row] for row in successors]
+
+        return {
+            "skills": skills,
+            "durations": durations,
+            "requirements": requirements,
+            "successors": successors,
+        }
+    except Exception as e:
+        print(f"  Error parsing {dzn_file.name}: {e}")
+        return None
+
+
+def _mspsp_json_name_from_dzn(dzn_stem: str) -> str:
+    return f"{dzn_stem.replace('_', '-')}.json"
+
+
+def convert_mspsp_to_json(source_dir: Path, output_dir: Path, verbose: bool = True) -> int:
+    """
+    Convert MSPSP .dzn instances to JSON files.
+
+    Returns:
+        Number of files converted.
+    """
+    if not source_dir.exists():
+        if verbose:
+            print(f"  Source directory not found: {source_dir}")
+        return 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+
+    for dzn_file in sorted(source_dir.glob("*.dzn")):
+        json_file = output_dir / _mspsp_json_name_from_dzn(dzn_file.stem)
+        if json_file.exists():
+            continue
+
+        payload = parse_mspsp_dzn(dzn_file)
+        if payload is None:
+            if verbose:
+                print(f"  Failed to parse: {dzn_file.name}")
+            continue
+
+        with open(json_file, "w") as f:
+            json.dump(payload, f, indent=2)
+            f.write("\n")
+        if verbose:
+            print(f"  Converted: {dzn_file.name} -> {json_file.name}")
+        count += 1
+
+    return count
+
+
 def sync_data_to_classical(verbose: bool = True) -> int:
     """
     Sync JSON data files from scheduling models to classical model directories.
@@ -953,6 +1203,16 @@ def main():
         help="Convert SchedulingOS .dzn and copy xcsp25 JSON files",
     )
     parser.add_argument(
+        "--convert-mrcpsp",
+        action="store_true",
+        help="Convert MRCPSP .dzn files to JSON",
+    )
+    parser.add_argument(
+        "--convert-mspsp",
+        action="store_true",
+        help="Convert MSPSP .dzn files to JSON",
+    )
+    parser.add_argument(
         "--update-config",
         action="store_true",
         help="Update config.yaml with discovered model pairs and instances",
@@ -978,7 +1238,7 @@ def main():
     # If no specific action, show help
     if not (args.all or args.extract_zips or args.psplib or args.convert_psplib
             or args.convert_airlands or args.convert_cyclic_rcpsp
-            or args.convert_scheduling_os
+            or args.convert_scheduling_os or args.convert_mrcpsp or args.convert_mspsp
             or args.sync or args.update_config):
         parser.print_help()
         print("\nTip: Use --all to perform all preparation steps")
@@ -1024,6 +1284,18 @@ def main():
         scheduling_os_data = PROJECT_ROOT / "examples" / "models" / "realistic" / "SchedulingOS" / "data"
         count = convert_scheduling_os_data(scheduling_os_src, scheduling_os_data, verbose)
         print(f"  Converted/Copied {count} new files")
+
+    if args.all or args.convert_mrcpsp:
+        print("\nConverting MRCPSP .dzn files to JSON...")
+        mrcpsp_data = PROJECT_ROOT / "examples" / "models" / "realistic" / "MRCPSP" / "data"
+        count = convert_mrcpsp_to_json(mrcpsp_data, mrcpsp_data, verbose)
+        print(f"  Converted {count} new files")
+
+    if args.all or args.convert_mspsp:
+        print("\nConverting MSPSP .dzn files to JSON...")
+        mspsp_data = PROJECT_ROOT / "examples" / "models" / "realistic" / "MSPSP" / "data"
+        count = convert_mspsp_to_json(mspsp_data, mspsp_data, verbose)
+        print(f"  Converted {count} new files")
 
     if args.all or args.sync:
         print("\nSyncing data to classical model directories...")

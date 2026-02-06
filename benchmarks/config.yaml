@@ -51,13 +51,27 @@ models:
     scheduling: examples/models/realistic/MRCPSP/MRCPSP.py
     data_dir: examples/models/realistic/MRCPSP/data
     instances:
+    - j30-01-10.json
     - j30-15-05.json
+    - j30-17-10.json
+    - j30-25-05.json
+    - j30-29-03.json
+    - j30-33-05.json
+    - j30-37-04.json
+    - j30-41-08.json
+    - j30-53-03.json
+    - j30-54-02.json
   MSPSP:
     classical: examples/PyCSP3-models/realistic/MSPSP/MSPSP.py
     scheduling: examples/models/realistic/MSPSP/MSPSP.py
     data_dir: examples/models/realistic/MSPSP/data
     instances:
     - easy-01.json
+    - hard-01.json
+    - hard-03.json
+    - medium-02.json
+    - medium-03.json
+    - medium-05.json
   RCPSP:
     classical: examples/PyCSP3-models/realistic/RCPSP/RCPSP.py
     scheduling: examples/models/realistic/RCPSP/RCPSP.py
