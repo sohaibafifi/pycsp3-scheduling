@@ -24,13 +24,13 @@
   {
     "problem": "BusScheduling",
     "classical_model": "examples/models/BusScheduling/classical/BusScheduling.py",
-    "scheduling_model": "",
+    "scheduling_model": "examples/models/BusScheduling/scheduling/BusScheduling.py",
     "data_folder": "examples/models/BusScheduling/data",
     "source": "csplib+prob022",
     "classical_source": "csplib:prob022",
-    "scheduling_source": "",
+    "scheduling_source": "csplib:prob022",
     "instances_count": 12,
-    "missing": "scheduling"
+    "missing": ""
   },
   {
     "problem": "CyclicRCPSP",
@@ -46,13 +46,13 @@
   {
     "problem": "EchelonStock2",
     "classical_model": "examples/models/EchelonStock2/classical/EchelonStock2.py",
-    "scheduling_model": "",
+    "scheduling_model": "examples/models/EchelonStock2/scheduling/EchelonStock2.py",
     "data_folder": "examples/models/EchelonStock2/data",
     "source": "csplib+prob040",
     "classical_source": "csplib:prob040",
-    "scheduling_source": "",
+    "scheduling_source": "csplib:prob040",
     "instances_count": 10,
-    "missing": "scheduling"
+    "missing": ""
   },
   {
     "problem": "FlexibleJobshop",
@@ -112,13 +112,13 @@
   {
     "problem": "NursingWorkload",
     "classical_model": "examples/models/NursingWorkload/classical/NursingWorkload.py",
-    "scheduling_model": "",
+    "scheduling_model": "examples/models/NursingWorkload/scheduling/NursingWorkload.py",
     "data_folder": "examples/models/NursingWorkload/data",
     "source": "csplib+prob069",
     "classical_source": "csplib:prob069",
-    "scheduling_source": "",
+    "scheduling_source": "csplib:prob069",
     "instances_count": 12,
-    "missing": "scheduling"
+    "missing": ""
   },
   {
     "problem": "RCPSP",
@@ -145,13 +145,13 @@
   {
     "problem": "RotatingRostering",
     "classical_model": "examples/models/RotatingRostering/classical/RotatingRostering.py",
-    "scheduling_model": "",
+    "scheduling_model": "examples/models/RotatingRostering/scheduling/RotatingRostering.py",
     "data_folder": "examples/models/RotatingRostering/data",
     "source": "csplib+prob087",
     "classical_source": "csplib:prob087",
-    "scheduling_source": "",
+    "scheduling_source": "csplib:prob087",
     "instances_count": 10,
-    "missing": "scheduling"
+    "missing": ""
   },
   {
     "problem": "SchedulingFS",
@@ -200,12 +200,12 @@
   {
     "problem": "TravelingTournamentWithPredefinedVenues",
     "classical_model": "examples/models/TravelingTournamentWithPredefinedVenues/classical/TravelingTournamentWithPredefinedVenues.py",
-    "scheduling_model": "",
+    "scheduling_model": "examples/models/TravelingTournamentWithPredefinedVenues/scheduling/TravelingTournamentWithPredefinedVenues.py",
     "data_folder": "examples/models/TravelingTournamentWithPredefinedVenues/data",
     "source": "csplib+prob068",
     "classical_source": "csplib:prob068",
-    "scheduling_source": "",
+    "scheduling_source": "csplib:prob068",
     "instances_count": 20,
-    "missing": "scheduling"
+    "missing": ""
   }
 ]
