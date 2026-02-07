@@ -52,6 +52,23 @@ models:
     - 7.json
     - 8.json
     - 9.json
+  BusScheduling:
+    classical: examples/models/BusScheduling/classical/BusScheduling.py
+    scheduling: examples/models/BusScheduling/scheduling/BusScheduling.py
+    data_dir: examples/models/BusScheduling/data
+    instances:
+    - c1.json
+    - c1a.json
+    - c2.json
+    - r1.json
+    - r1a.json
+    - r2.json
+    - r3.json
+    - r4.json
+    - r5.json
+    - r5a.json
+    - t1.json
+    - t2.json
   CyclicRCPSP:
     classical: examples/models/CyclicRCPSP/classical/CyclicRCPSP.py
     scheduling: examples/models/CyclicRCPSP/scheduling/CyclicRCPSP.py
@@ -67,6 +84,21 @@ models:
     - medium-1.json
     - medium-2.json
     - medium-3.json
+  EchelonStock2:
+    classical: examples/models/EchelonStock2/classical/EchelonStock2.py
+    scheduling: examples/models/EchelonStock2/scheduling/EchelonStock2.py
+    data_dir: examples/models/EchelonStock2/data
+    instances:
+    - A01.json
+    - A02.json
+    - A03.json
+    - A04.json
+    - A05.json
+    - A06.json
+    - A07.json
+    - A08.json
+    - A09.json
+    - A10.json
   FlexibleJobshop:
     classical: examples/models/FlexibleJobshop/classical/FlexibleJobshop.py
     scheduling: examples/models/FlexibleJobshop/scheduling/FlexibleJobshop.py
@@ -181,6 +213,23 @@ models:
     - medium-02.json
     - medium-03.json
     - medium-05.json
+  NursingWorkload:
+    classical: examples/models/NursingWorkload/classical/NursingWorkload.py
+    scheduling: examples/models/NursingWorkload/scheduling/NursingWorkload.py
+    data_dir: examples/models/NursingWorkload/data
+    instances:
+    - 15zones.json
+    - 2zones0.json
+    - 2zones1.json
+    - 2zones2.json
+    - 2zones3.json
+    - 2zones4.json
+    - 3zones0.json
+    - 3zones1.json
+    - 3zones2.json
+    - 3zones3.json
+    - 3zones4.json
+    - 6zones.json
   RCPSP:
     classical: examples/models/RCPSP/classical/RCPSP.py
     scheduling: examples/models/RCPSP/scheduling/RCPSP.py
@@ -223,6 +272,21 @@ models:
     instances:
     - rc.json
     - rs.json
+  RotatingRostering:
+    classical: examples/models/RotatingRostering/classical/RotatingRostering.py
+    scheduling: examples/models/RotatingRostering/scheduling/RotatingRostering.py
+    data_dir: examples/models/RotatingRostering/data
+    instances:
+    - 008-2-3.json
+    - 012-2-3.json
+    - 020-2-3.json
+    - 028-2-3.json
+    - 036-2-3.json
+    - 036-2-4.json
+    - 044-2-3.json
+    - 044-2-4.json
+    - 052-2-3.json
+    - 052-2-4.json
   SchedulingFS:
     classical: examples/models/SchedulingFS/classical/SchedulingFS.py
     scheduling: examples/models/SchedulingFS/scheduling/SchedulingFS.py
@@ -298,6 +362,31 @@ models:
     - t100m50r03-1.json
     - t100m50r05-1.json
     - t100m50r10-1.json
+  TravelingTournamentWithPredefinedVenues:
+    classical: examples/models/TravelingTournamentWithPredefinedVenues/classical/TravelingTournamentWithPredefinedVenues.py
+    scheduling: examples/models/TravelingTournamentWithPredefinedVenues/scheduling/TravelingTournamentWithPredefinedVenues.py
+    data_dir: examples/models/TravelingTournamentWithPredefinedVenues/data
+    instances:
+    - circ14anonbal.json
+    - circ14bnonbal.json
+    - circ14cnonbal.json
+    - circ14dnonbal.json
+    - circ14enonbal.json
+    - circ20anonbal.json
+    - circ20bnonbal.json
+    - circ20cnonbal.json
+    - circ20dnonbal.json
+    - circ20enonbal.json
+    - circ20fnonbal.json
+    - circ20gnonbal.json
+    - circ20hnonbal.json
+    - circ20inonbal.json
+    - circ20jnonbal.json
+    - circ8abal.json
+    - circ8bbal.json
+    - circ8cbal.json
+    - circ8dbal.json
+    - circ8ebal.json
 settings:
   timeout: 1200
   repetitions: 1
