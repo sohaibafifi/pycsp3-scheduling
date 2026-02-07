@@ -18,38 +18,14 @@ uv run python benchmarks/runner.py --model=MRCPSP --timeout=600
 uv run python benchmarks/runner.py --model=MRCPSP --instance=j30-15-05.json --no-report
 ```
 
-## Directory Structure
 
-```text
-benchmarks/
-├── config.yaml                  # Model mappings and benchmark settings
-├── runner.py                    # Main benchmark runner
-├── report.py                    # Report generation from raw results
-├── consolidate_results.py       # Merge distributed run outputs + regenerate reports
-├── build_manifest.py            # Build model/instance manifest for array jobs
-├── download_data.py             # Download/extract benchmark data
-├── parse_xcsp3.py               # XCSP3 parser helpers
-├── metrics.py                   # Metric dataclasses and comparisons
-├── cluster/
-│   ├── run_sbatch_array.sh      # Slurm array task entrypoint
-│   └── run_oar_array.sh         # OAR array task entrypoint
-└── results/                     # Results and generated reports
-```
-
-## Data Preparation
+## Data Source
 
 ```bash
-# Extract XCSP ZIP files in PyCSP3-models
-uv run python benchmarks/download_data.py --extract-zips
-
-# Download PSPLIB instances (optional)
-uv run python benchmarks/download_data.py --psplib
-
-# Sync data files to model directories
-uv run python benchmarks/download_data.py --sync
-
-# All-in-one
-uv run python benchmarks/download_data.py --all
+# Models/data are read from the unified layout
+# examples/models/<Problem>/{classical,scheduling,data}
+# and benchmark pairs are configured in benchmarks/config.yaml
+uv run python benchmarks/runner.py --suite=quick --timeout=60 --repetitions=1
 ```
 
 ## Running Benchmarks Locally
@@ -166,23 +142,6 @@ Comparison uses:
 - variable/constraint **augmentation** percentages,
 - objective snapshot quality on incomplete solves,
 - counts of proven optima per approach.
-
-## Output Files
-
-- `benchmarks/results/results_latest.json` - most recent raw run output
-- `benchmarks/results/results_*.json` - timestamped raw outputs
-- `benchmarks/results/reports/comparison.csv` - full table
-- `benchmarks/results/reports/comparison.tex` - LaTeX table
-- `benchmarks/results/reports/reduction_summary.tex` - LaTeX summary
-- `benchmarks/results/reports/summary.json` - aggregated metrics
-- `benchmarks/results/reports/size_comparison.{pdf,png}`
-- `benchmarks/results/reports/solve_time_comparison.{pdf,png}`
-- `benchmarks/results/reports/solve_time_scatter.{pdf,png}`
-- `benchmarks/results/reports/loc_comparison.{pdf,png}`
-- `benchmarks/results/reports/objective_avg_comparison.{pdf,png}`
-- `benchmarks/results/reports/objective_gap.{pdf,png}`
-- `benchmarks/results/reports/objective_snapshot_comparison.{pdf,png}`
-- `benchmarks/results/reports/optimality_counts.{pdf,png}`
 
 ## Interpretation Checklist
 

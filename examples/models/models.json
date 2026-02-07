@@ -1,189 +1,211 @@
 [
   {
-    "name": "AircraftLanding",
-    "fullname": "realistic/AircraftLanding",
-    "constraints": [
-      "NoOverlap"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "xcsp22"
-    ],
-    "links": [
-      "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/airlandinfo.html",
-      "https://www.jstor.org/stable/25768908",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/AircraftLanding/AircraftLanding.py"
-    ]
+    "problem": "AircraftLanding",
+    "classical_model": "examples/models/AircraftLanding/classical/AircraftLanding.py",
+    "scheduling_model": "examples/models/AircraftLanding/scheduling/AircraftLanding.py",
+    "data_folder": "examples/models/AircraftLanding/data",
+    "source": "csplib+realistic+prob011",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 13,
+    "missing": ""
   },
   {
-    "name": "CyclicRCPSP",
-    "fullname": "realistic/CyclicRCPSP",
-    "constraints": [
-      "SeqCumulative"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "mzn11",
-      "mzn14"
-    ],
-    "links": [
-      "https://www.minizinc.org/challenge/2014/results/",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/CyclicRCPSP/CyclicRCPSP.py"
-    ]
+    "problem": "BACP",
+    "classical_model": "examples/models/BACP/classical/BACP.py",
+    "scheduling_model": "examples/models/BACP/scheduling/BACP.py",
+    "data_folder": "examples/models/BACP/data",
+    "source": "csplib+prob030",
+    "classical_source": "csplib:prob030",
+    "scheduling_source": "csplib:prob030",
+    "instances_count": 28,
+    "missing": ""
   },
   {
-    "name": "FlexibleJobshop",
-    "fullname": "realistic/FlexibleJobshop",
-    "constraints": [
-      "end_before_start",
-      "alternative",
-      "SeqCumulative"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "mzn13"
-    ],
-    "links": [
-      "https://www.minizinc.org/challenge/2013/results/",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/FlexibleJobshop/FlexibleJobshop.py"
-    ]
+    "problem": "BusScheduling",
+    "classical_model": "examples/models/BusScheduling/classical/BusScheduling.py",
+    "scheduling_model": "",
+    "data_folder": "examples/models/BusScheduling/data",
+    "source": "csplib+prob022",
+    "classical_source": "csplib:prob022",
+    "scheduling_source": "",
+    "instances_count": 12,
+    "missing": "scheduling"
   },
   {
-    "name": "MRCPSP",
-    "fullname": "realistic/MRCPSP",
-    "constraints": [
-      "end_before_start",
-      "alternative",
-      "Cumulative"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "mzn16",
-      "mzn23"
-    ],
-    "links": [
-      "https://www.minizinc.org/challenge/2023/results/",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/MRCPSP/MRCPSP.py"
-    ]
+    "problem": "CyclicRCPSP",
+    "classical_model": "examples/models/CyclicRCPSP/classical/CyclicRCPSP.py",
+    "scheduling_model": "examples/models/CyclicRCPSP/scheduling/CyclicRCPSP.py",
+    "data_folder": "examples/models/CyclicRCPSP/data",
+    "source": "realistic",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 10,
+    "missing": ""
   },
   {
-    "name": "MSPSP",
-    "fullname": "realistic/MSPSP",
-    "constraints": [
-      "end_before_start",
-      "SeqCumulative",
-      "Cumulative"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "mzn12"
-    ],
-    "links": [
-      "https://www.minizinc.org/challenge/2012/results/",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/MSPSP/MSPSP.py"
-    ]
+    "problem": "EchelonStock2",
+    "classical_model": "examples/models/EchelonStock2/classical/EchelonStock2.py",
+    "scheduling_model": "",
+    "data_folder": "examples/models/EchelonStock2/data",
+    "source": "csplib+prob040",
+    "classical_source": "csplib:prob040",
+    "scheduling_source": "",
+    "instances_count": 10,
+    "missing": "scheduling"
   },
   {
-    "name": "RCPSP",
-    "fullname": "realistic/RCPSP",
-    "constraints": [
-      "end_before_start",
-      "SeqCumulative"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "csplib",
-      "xcsp22"
-    ],
-    "links": [
-      "https://www.om-db.wi.tum.de/psplib/data.html",
-      "https://www.csplib.org/Problems/prob061/",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/RCPSP/RCPSP.py"
-    ]
+    "problem": "FlexibleJobshop",
+    "classical_model": "examples/models/FlexibleJobshop/classical/FlexibleJobshop.py",
+    "scheduling_model": "examples/models/FlexibleJobshop/scheduling/FlexibleJobshop.py",
+    "data_folder": "examples/models/FlexibleJobshop/data",
+    "source": "realistic",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 5,
+    "missing": ""
   },
   {
-    "name": "SchedulingFS",
-    "fullname": "realistic/SchedulingFS",
-    "constraints": [
-      "end_before_start",
-      "SeqNoOverlap"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "notebook"
-    ],
-    "links": [
-      "https://en.wikipedia.org/wiki/Flow_shop_scheduling",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/SchedulingFS/SchedulingFS.py"
-    ]
+    "problem": "FlexibleJobshopScen",
+    "classical_model": "examples/models/FlexibleJobshopScen/classical/FlexibleJobshopScen.py",
+    "scheduling_model": "examples/models/FlexibleJobshopScen/scheduling/FlexibleJobshopScen.py",
+    "data_folder": "examples/models/FlexibleJobshopScen/data",
+    "source": "csplib+prob077",
+    "classical_source": "csplib:prob077",
+    "scheduling_source": "csplib:prob077",
+    "instances_count": 9,
+    "missing": ""
   },
   {
-    "name": "SchedulingJS",
-    "fullname": "realistic/SchedulingJS",
-    "constraints": [
-      "end_before_start",
-      "NoOverlap"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling"
-    ],
-    "links": [
-      "https://en.wikipedia.org/wiki/Job_shop_scheduling",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/SchedulingJS/SchedulingJS.py"
-    ]
+    "problem": "LotSizing",
+    "classical_model": "examples/models/LotSizing/classical/LotSizing.py",
+    "scheduling_model": "examples/models/LotSizing/scheduling/LotSizing.py",
+    "data_folder": "examples/models/LotSizing/data",
+    "source": "csplib+prob058",
+    "classical_source": "csplib:prob058",
+    "scheduling_source": "csplib:prob058",
+    "instances_count": 59,
+    "missing": ""
   },
   {
-    "name": "SchedulingOS",
-    "fullname": "realistic/SchedulingOS",
-    "constraints": [
-      "NoOverlap",
-      "AllDifferent",
-      "Table"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "xcsp25"
-    ],
-    "links": [
-      "https://en.wikipedia.org/wiki/Open-shop_scheduling",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/SchedulingOS/SchedulingOS.py"
-    ]
+    "problem": "MRCPSP",
+    "classical_model": "examples/models/MRCPSP/classical/MRCPSP.py",
+    "scheduling_model": "examples/models/MRCPSP/scheduling/MRCPSP.py",
+    "data_folder": "examples/models/MRCPSP/data",
+    "source": "csplib+realistic+prob060",
+    "classical_source": "csplib:prob060",
+    "scheduling_source": "realistic",
+    "instances_count": 10,
+    "missing": ""
   },
   {
-    "name": "TestScheduling",
-    "fullname": "realistic/TestScheduling",
-    "constraints": [
-      "NoOverlap",
-      "SeqCumulative"
-    ],
-    "type": "COP",
-    "tags": [
-      "realistic",
-      "scheduling",
-      "csplib",
-      "xcsp24"
-    ],
-    "links": [
-      "https://www.csplib.org/Problems/prob073/",
-      "https://github.com/xcsp3team/PyCSP3-models/blob/main/realistic/TestScheduling/TestScheduling.py"
-    ]
+    "problem": "MSPSP",
+    "classical_model": "examples/models/MSPSP/classical/MSPSP.py",
+    "scheduling_model": "examples/models/MSPSP/scheduling/MSPSP.py",
+    "data_folder": "examples/models/MSPSP/data",
+    "source": "realistic",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 6,
+    "missing": ""
+  },
+  {
+    "problem": "NursingWorkload",
+    "classical_model": "examples/models/NursingWorkload/classical/NursingWorkload.py",
+    "scheduling_model": "",
+    "data_folder": "examples/models/NursingWorkload/data",
+    "source": "csplib+prob069",
+    "classical_source": "csplib:prob069",
+    "scheduling_source": "",
+    "instances_count": 12,
+    "missing": "scheduling"
+  },
+  {
+    "problem": "RCPSP",
+    "classical_model": "examples/models/RCPSP/classical/RCPSP.py",
+    "scheduling_model": "examples/models/RCPSP/scheduling/RCPSP.py",
+    "data_folder": "examples/models/RCPSP/data",
+    "source": "csplib+realistic+prob061",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 2042,
+    "missing": ""
+  },
+  {
+    "problem": "Rehearsal",
+    "classical_model": "examples/models/Rehearsal/classical/Rehearsal.py",
+    "scheduling_model": "examples/models/Rehearsal/scheduling/Rehearsal.py",
+    "data_folder": "examples/models/Rehearsal/data",
+    "source": "csplib+prob039",
+    "classical_source": "csplib:prob039",
+    "scheduling_source": "csplib:prob039",
+    "instances_count": 2,
+    "missing": ""
+  },
+  {
+    "problem": "RotatingRostering",
+    "classical_model": "examples/models/RotatingRostering/classical/RotatingRostering.py",
+    "scheduling_model": "",
+    "data_folder": "examples/models/RotatingRostering/data",
+    "source": "csplib+prob087",
+    "classical_source": "csplib:prob087",
+    "scheduling_source": "",
+    "instances_count": 10,
+    "missing": "scheduling"
+  },
+  {
+    "problem": "SchedulingFS",
+    "classical_model": "examples/models/SchedulingFS/classical/SchedulingFS.py",
+    "scheduling_model": "examples/models/SchedulingFS/scheduling/SchedulingFS.py",
+    "data_folder": "examples/models/SchedulingFS/data",
+    "source": "realistic",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 2,
+    "missing": ""
+  },
+  {
+    "problem": "SchedulingJS",
+    "classical_model": "examples/models/SchedulingJS/classical/SchedulingJS.py",
+    "scheduling_model": "examples/models/SchedulingJS/scheduling/SchedulingJS.py",
+    "data_folder": "examples/models/SchedulingJS/data",
+    "source": "realistic",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 2,
+    "missing": ""
+  },
+  {
+    "problem": "SchedulingOS",
+    "classical_model": "examples/models/SchedulingOS/classical/SchedulingOS.py",
+    "scheduling_model": "examples/models/SchedulingOS/scheduling/SchedulingOS.py",
+    "data_folder": "examples/models/SchedulingOS/data",
+    "source": "realistic",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 20,
+    "missing": ""
+  },
+  {
+    "problem": "TestScheduling",
+    "classical_model": "examples/models/TestScheduling/classical/TestScheduling.py",
+    "scheduling_model": "examples/models/TestScheduling/scheduling/TestScheduling.py",
+    "data_folder": "examples/models/TestScheduling/data",
+    "source": "csplib+realistic+prob073",
+    "classical_source": "pycsp3-models",
+    "scheduling_source": "realistic",
+    "instances_count": 31,
+    "missing": ""
+  },
+  {
+    "problem": "TravelingTournamentWithPredefinedVenues",
+    "classical_model": "examples/models/TravelingTournamentWithPredefinedVenues/classical/TravelingTournamentWithPredefinedVenues.py",
+    "scheduling_model": "",
+    "data_folder": "examples/models/TravelingTournamentWithPredefinedVenues/data",
+    "source": "csplib+prob068",
+    "classical_source": "csplib:prob068",
+    "scheduling_source": "",
+    "instances_count": 20,
+    "missing": "scheduling"
   }
 ]

@@ -1,0 +1,423 @@
+{
+  "nMachines": 10,
+  "nResources": 10,
+  "tests": [
+    {
+      "duration": 274,
+      "machines": [
+        3,
+        4,
+        5
+      ],
+      "resources": []
+    },
+    {
+      "duration": 653,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 661,
+      "machines": [
+        1
+      ],
+      "resources": []
+    },
+    {
+      "duration": 596,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 420,
+      "machines": [],
+      "resources": [
+        2,
+        5,
+        6
+      ]
+    },
+    {
+      "duration": 185,
+      "machines": [
+        1,
+        3,
+        6,
+        9
+      ],
+      "resources": []
+    },
+    {
+      "duration": 763,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 431,
+      "machines": [],
+      "resources": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 466,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 31,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 517,
+      "machines": [],
+      "resources": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        9
+      ]
+    },
+    {
+      "duration": 316,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 397,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 611,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 336,
+      "machines": [
+        0,
+        4,
+        5,
+        6
+      ],
+      "resources": []
+    },
+    {
+      "duration": 678,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 762,
+      "machines": [
+        5,
+        6,
+        8
+      ],
+      "resources": []
+    },
+    {
+      "duration": 741,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 594,
+      "machines": [],
+      "resources": [
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 535,
+      "machines": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "resources": [
+        0,
+        7
+      ]
+    },
+    {
+      "duration": 594,
+      "machines": [],
+      "resources": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 37,
+      "machines": [],
+      "resources": [
+        0,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9
+      ]
+    },
+    {
+      "duration": 402,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 543,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 617,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 786,
+      "machines": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "resources": []
+    },
+    {
+      "duration": 391,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 556,
+      "machines": [
+        3,
+        5,
+        9
+      ],
+      "resources": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "duration": 500,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 163,
+      "machines": [
+        1,
+        6,
+        7,
+        9
+      ],
+      "resources": []
+    },
+    {
+      "duration": 605,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 343,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 701,
+      "machines": [
+        2,
+        8
+      ],
+      "resources": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 659,
+      "machines": [],
+      "resources": [
+        4,
+        5
+      ]
+    },
+    {
+      "duration": 645,
+      "machines": [
+        0,
+        9
+      ],
+      "resources": []
+    },
+    {
+      "duration": 228,
+      "machines": [
+        4,
+        6,
+        8
+      ],
+      "resources": []
+    },
+    {
+      "duration": 405,
+      "machines": [],
+      "resources": [
+        1,
+        2,
+        4,
+        5,
+        8
+      ]
+    },
+    {
+      "duration": 308,
+      "machines": [],
+      "resources": [
+        7
+      ]
+    },
+    {
+      "duration": 457,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 459,
+      "machines": [
+        1,
+        4
+      ],
+      "resources": []
+    },
+    {
+      "duration": 441,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 544,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 453,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 328,
+      "machines": [],
+      "resources": [
+        2,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "duration": 296,
+      "machines": [
+        2,
+        6
+      ],
+      "resources": []
+    },
+    {
+      "duration": 322,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 729,
+      "machines": [],
+      "resources": [
+        2,
+        4,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 441,
+      "machines": [],
+      "resources": []
+    },
+    {
+      "duration": 528,
+      "machines": [
+        0,
+        5,
+        8
+      ],
+      "resources": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "duration": 27,
+      "machines": [
+        9
+      ],
+      "resources": []
+    }
+  ]
+}
