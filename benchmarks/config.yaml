@@ -272,21 +272,6 @@ models:
     instances:
     - rc.json
     - rs.json
-  RotatingRostering:
-    classical: examples/models/RotatingRostering/classical/RotatingRostering.py
-    scheduling: examples/models/RotatingRostering/scheduling/RotatingRostering.py
-    data_dir: examples/models/RotatingRostering/data
-    instances:
-    - 008-2-3.json
-    - 012-2-3.json
-    - 020-2-3.json
-    - 028-2-3.json
-    - 036-2-3.json
-    - 036-2-4.json
-    - 044-2-3.json
-    - 044-2-4.json
-    - 052-2-3.json
-    - 052-2-4.json
   SchedulingFS:
     classical: examples/models/SchedulingFS/classical/SchedulingFS.py
     scheduling: examples/models/SchedulingFS/scheduling/SchedulingFS.py
