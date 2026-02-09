@@ -608,7 +608,12 @@ def try_generate_plots(
 
     # Add diagonal line (equal performance)
     max_time = max(max(classical_times), max(scheduling_times))
-    ax.plot([0, max_time], [0, max_time], "k--", alpha=0.5, label="Equal")
+    axis_max = max_time * 1.05 if max_time > 0 else 1.0
+    ax.plot([0, axis_max], [0, axis_max], "k--", alpha=0.5, label="Equal")
+    ax.set_xlim(0, axis_max)
+    ax.set_ylim(0, axis_max)
+    # Keep a true square scatter (same scale on both axes).
+    ax.set_aspect("equal", adjustable="box")
 
     ax.set_xlabel("Classical Solve Time (s)")
     ax.set_ylabel("Scheduling Solve Time (s)")
@@ -720,14 +725,13 @@ def try_generate_plots(
     # 6. Objective average better counts
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    snapshot_labels = ["Classical Better", "Tie", "Scheduling Better", "N/A"]
+    snapshot_labels = ["Classical Better", "Tie", "Scheduling Better"]
     snapshot_values = [
         sum(1 for c in comparisons if c.objective_better == "classical"),
         sum(1 for c in comparisons if c.objective_better == "tie"),
         sum(1 for c in comparisons if c.objective_better == "scheduling"),
-        sum(1 for c in comparisons if c.objective_better is None),
     ]
-    snapshot_colors = ["steelblue", "gray", "coral", "lightgray"]
+    snapshot_colors = ["steelblue", "gray", "coral"]
 
     ax.bar(snapshot_labels, snapshot_values, color=snapshot_colors, edgecolor="black")
     ax.set_ylabel("Number of Models")
