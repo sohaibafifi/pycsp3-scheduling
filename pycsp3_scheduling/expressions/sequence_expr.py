@@ -24,18 +24,32 @@ if TYPE_CHECKING:
 
 
 # Cache for next_arg/prev_arg variables to avoid duplication
-_next_arg_vars: dict[tuple[int, int], Any] = {}
-_prev_arg_vars: dict[tuple[int, int], Any] = {}
+# Core index variables are independent from marker values and can be reused.
+_next_arg_index_vars: dict[tuple[int, int], Any] = {}
+_prev_arg_index_vars: dict[tuple[int, int], Any] = {}
+# Public next_arg/prev_arg results depend on marker values.
+_next_arg_vars: dict[tuple[int, int, int, int], Any] = {}
+_prev_arg_vars: dict[tuple[int, int, int, int], Any] = {}
 _sequence_position_vars: dict[int, list[Any]] = {}
 _sequence_present_count_vars: dict[int, Any] = {}
 
 
 def clear_sequence_expr_cache() -> None:
     """Clear cached sequence expression variables."""
+    _next_arg_index_vars.clear()
+    _prev_arg_index_vars.clear()
     _next_arg_vars.clear()
     _prev_arg_vars.clear()
     _sequence_position_vars.clear()
     _sequence_present_count_vars.clear()
+
+
+def _marker_suffix(a: int, b: int) -> str:
+    """Return a stable, identifier-safe suffix for marker pairs."""
+    def _one(v: int) -> str:
+        return f"m{-v}" if v < 0 else f"p{v}"
+
+    return f"{_one(a)}_{_one(b)}"
 
 
 def _validate_sequence_and_interval(sequence, interval: IntervalVar) -> tuple[list, int]:
@@ -92,11 +106,9 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
 
     if n == 0:
         # Empty sequence - no constraints needed
-        count_var = Var(dom={0}, id=f"seqcount{sequence._id}")
-        satisfy(count_var == 0)
         _sequence_position_vars[sequence._id] = []
-        _sequence_present_count_vars[sequence._id] = count_var
-        return [], count_var
+        _sequence_present_count_vars[sequence._id] = 0
+        return [], 0
 
     positions: list[Any] = []
     presences: list[Any] = []
@@ -133,26 +145,31 @@ def _ensure_sequence_positions(sequence: SequenceVar) -> tuple[list[Any], Any]:
                 )
             )
 
-    # Count of present intervals
-    count_var = Var(dom=range(0, n + 1), id=f"seqcount{sequence._id}")
-    if len(presences) == 1:
-        sum_presences = presences[0]
-    else:
-        sum_presences = Node.build(TypeNode.ADD, *presences)
-    satisfy(Node.build(TypeNode.EQ, count_var, sum_presences))
-
-    # Present intervals must occupy positions 1..count_var (no gaps)
-    for interval, pos_var, pres in zip(intervals, positions, presences):
-        if interval.optional:
-            satisfy(
-                Node.build(
-                    TypeNode.OR,
-                    Node.build(TypeNode.EQ, pres, 0),
-                    Node.build(TypeNode.LE, pos_var, count_var),
-                )
-            )
+    # Count of present intervals.
+    # For all-mandatory sequences, this is the constant n and no extra
+    # variable/constraints are needed.
+    if has_optional:
+        count_var: Any = Var(dom=range(0, n + 1), id=f"seqcount{sequence._id}")
+        if len(presences) == 1:
+            sum_presences = presences[0]
         else:
-            satisfy(Node.build(TypeNode.LE, pos_var, count_var))
+            sum_presences = Node.build(TypeNode.ADD, *presences)
+        satisfy(Node.build(TypeNode.EQ, count_var, sum_presences))
+
+        # Present intervals must occupy positions 1..count_var (no gaps)
+        for interval, pos_var, pres in zip(intervals, positions, presences):
+            if interval.optional:
+                satisfy(
+                    Node.build(
+                        TypeNode.OR,
+                        Node.build(TypeNode.EQ, pres, 0),
+                        Node.build(TypeNode.LE, pos_var, count_var),
+                    )
+                )
+            else:
+                satisfy(Node.build(TypeNode.LE, pos_var, count_var))
+    else:
+        count_var = n
 
     # All-different positions for present intervals
     # Use native AllDifferent constraint instead of O(n²) pairwise decomposition
@@ -384,13 +401,22 @@ def next_arg(
 
     intervals, idx = _validate_sequence_and_interval(sequence, interval)
 
-    # Check cache
-    cache_key = (sequence._id, interval._id)
+    # Value cache (depends on marker values)
+    cache_key = (sequence._id, interval._id, last_value, absent_value)
     if cache_key in _next_arg_vars:
         return _next_arg_vars[cache_key]
 
-    # Build the next_arg variable and constraints
-    var = _build_next_arg_var(sequence, interval, idx, last_value, absent_value)
+    # Core successor index cache (independent from marker values)
+    index_cache_key = (sequence._id, interval._id)
+    if index_cache_key in _next_arg_index_vars:
+        next_idx = _next_arg_index_vars[index_cache_key]
+    else:
+        next_idx = _build_next_arg_index_var(sequence, interval, idx)
+        _next_arg_index_vars[index_cache_key] = next_idx
+
+    var = _build_next_arg_value_var(
+        sequence, interval, idx, next_idx, last_value, absent_value
+    )
     _next_arg_vars[cache_key] = var
     return var
 
@@ -399,20 +425,87 @@ def next_arg(
 type_of_next = next_arg
 
 
-def _build_next_arg_var(
+def _is_identity_next_mapping(
+    sequence: SequenceVar, interval: IntervalVar, last_value: int, absent_value: int
+) -> bool:
+    """Return True when next_idx already equals the desired next_arg value."""
+    n = len(sequence.intervals)
+    if any(t != i for i, t in enumerate(sequence.types)):
+        return False
+    if last_value != n:
+        return False
+    if interval.optional and absent_value != n + 1:
+        return False
+    return True
+
+
+def _build_next_arg_value_var(
     sequence: SequenceVar,
     interval: IntervalVar,
     idx: int,
+    next_idx: Any,
     last_value: int,
     absent_value: int,
 ) -> Any:
+    """Map successor index to user-facing type/marker values."""
+    from pycsp3 import Var, satisfy
+    from pycsp3.classes.nodes import Node, TypeNode
+
+    if _is_identity_next_mapping(sequence, interval, last_value, absent_value):
+        # Common fast path: sequence types are [0..n-1] and markers are n/n+1.
+        return next_idx
+
+    types = sequence.types
+    n = len(sequence.intervals)
+    last_idx = n
+    absent_idx = n + 1
+    types_extended = list(types) + [last_value, absent_value]
+
+    next_idx_domain = set(range(n)) - {idx}
+    next_idx_domain.add(last_idx)
+    if interval.optional:
+        next_idx_domain.add(absent_idx)
+
+    result_domain = set(types_extended[j] for j in next_idx_domain)
+    suffix = _marker_suffix(last_value, absent_value)
+    if suffix == "p0_p0":
+        result_id = f"tonext{sequence._id}_{interval._id}"
+    else:
+        result_id = f"tonext{sequence._id}_{interval._id}_{suffix}"
+
+    result_var = Var(dom=result_domain, id=result_id)
+    value_to_indices: dict[int, list[int]] = {}
+    for j in next_idx_domain:
+        value = types_extended[j]
+        value_to_indices.setdefault(value, []).append(j)
+        # next_idx = j => result_var = value
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, next_idx, j),
+                Node.build(TypeNode.EQ, result_var, value),
+            )
+        )
+
+    # result_var = value => next_idx is one of the corresponding indices
+    for value, indices in value_to_indices.items():
+        disjuncts = [Node.build(TypeNode.NE, result_var, value)]
+        disjuncts.extend(Node.build(TypeNode.EQ, next_idx, j) for j in indices)
+        satisfy(Node.build(TypeNode.OR, *disjuncts))
+    return result_var
+
+
+def _build_next_arg_index_var(
+    sequence: SequenceVar,
+    interval: IntervalVar,
+    idx: int,
+) -> Any:
     """
-    Build a pycsp3 variable for next_arg with appropriate constraints.
+    Build a core successor index variable for next_arg.
 
     Successor-variable encoding using position variables:
     - Each interval has a position (0 if absent, otherwise 1..m).
     - The successor index is the interval at position +1, or a last/absent marker.
-    - Use an element constraint to map successor index to ID values.
     """
     from pycsp3 import Var, satisfy
     from pycsp3.classes.nodes import Node, TypeNode
@@ -420,16 +513,11 @@ def _build_next_arg_var(
     from pycsp3_scheduling.constraints._pycsp3 import (
         presence_var,
     )
-    from pycsp3_scheduling.expressions.element import element
-
     intervals = sequence.intervals
-    types = sequence.types
     n = len(intervals)
 
-    # Build extended types array: [type_0, ..., type_{n-1}, last_value, absent_value]
     last_idx = n
     absent_idx = n + 1
-    types_extended = list(types) + [last_value, absent_value]
 
     # Successor index variable (interval index, last, absent)
     next_idx_domain = set(range(n)) - {idx}
@@ -438,11 +526,6 @@ def _build_next_arg_var(
         next_idx_domain.add(absent_idx)
 
     next_idx = Var(dom=next_idx_domain, id=f"succ{sequence._id}_{interval._id}")
-
-    # Result variable mapped from successor index
-    result_domain = set(types_extended[j] for j in next_idx_domain)
-    result_var = Var(dom=result_domain, id=f"tonext{sequence._id}_{interval._id}")
-    satisfy(result_var == element(types_extended, next_idx))
 
     # Position-based successor channeling
     positions, count_var = _ensure_sequence_positions(sequence)
@@ -535,7 +618,7 @@ def _build_next_arg_var(
                 )
             )
 
-    return result_var
+    return next_idx
 
 
 # =============================================================================
@@ -707,13 +790,22 @@ def prev_arg(
 
     intervals, idx = _validate_sequence_and_interval(sequence, interval)
 
-    # Check cache
-    cache_key = (sequence._id, interval._id)
+    # Value cache (depends on marker values)
+    cache_key = (sequence._id, interval._id, first_value, absent_value)
     if cache_key in _prev_arg_vars:
         return _prev_arg_vars[cache_key]
 
-    # Build the prev_arg variable and constraints
-    var = _build_prev_arg_var(sequence, interval, idx, first_value, absent_value)
+    # Core predecessor index cache (independent from marker values)
+    index_cache_key = (sequence._id, interval._id)
+    if index_cache_key in _prev_arg_index_vars:
+        prev_idx = _prev_arg_index_vars[index_cache_key]
+    else:
+        prev_idx = _build_prev_arg_index_var(sequence, interval, idx)
+        _prev_arg_index_vars[index_cache_key] = prev_idx
+
+    var = _build_prev_arg_value_var(
+        sequence, interval, idx, prev_idx, first_value, absent_value
+    )
     _prev_arg_vars[cache_key] = var
     return var
 
@@ -722,15 +814,83 @@ def prev_arg(
 type_of_prev = prev_arg
 
 
-def _build_prev_arg_var(
+def _is_identity_prev_mapping(
+    sequence: SequenceVar, interval: IntervalVar, first_value: int, absent_value: int
+) -> bool:
+    """Return True when prev_idx already equals the desired prev_arg value."""
+    n = len(sequence.intervals)
+    if any(t != i for i, t in enumerate(sequence.types)):
+        return False
+    if first_value != n:
+        return False
+    if interval.optional and absent_value != n + 1:
+        return False
+    return True
+
+
+def _build_prev_arg_value_var(
     sequence: SequenceVar,
     interval: IntervalVar,
     idx: int,
+    prev_idx: Any,
     first_value: int,
     absent_value: int,
 ) -> Any:
+    """Map predecessor index to user-facing type/marker values."""
+    from pycsp3 import Var, satisfy
+    from pycsp3.classes.nodes import Node, TypeNode
+
+    if _is_identity_prev_mapping(sequence, interval, first_value, absent_value):
+        # Common fast path: sequence types are [0..n-1] and markers are n/n+1.
+        return prev_idx
+
+    types = sequence.types
+    n = len(sequence.intervals)
+    first_idx = n
+    absent_idx = n + 1
+    types_extended = list(types) + [first_value, absent_value]
+
+    prev_idx_domain = set(range(n)) - {idx}
+    prev_idx_domain.add(first_idx)
+    if interval.optional:
+        prev_idx_domain.add(absent_idx)
+
+    result_domain = set(types_extended[j] for j in prev_idx_domain)
+    suffix = _marker_suffix(first_value, absent_value)
+    if suffix == "p0_p0":
+        result_id = f"toprev{sequence._id}_{interval._id}"
+    else:
+        result_id = f"toprev{sequence._id}_{interval._id}_{suffix}"
+
+    result_var = Var(dom=result_domain, id=result_id)
+    value_to_indices: dict[int, list[int]] = {}
+    for j in prev_idx_domain:
+        value = types_extended[j]
+        value_to_indices.setdefault(value, []).append(j)
+        # prev_idx = j => result_var = value
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, prev_idx, j),
+                Node.build(TypeNode.EQ, result_var, value),
+            )
+        )
+
+    # result_var = value => prev_idx is one of the corresponding indices
+    for value, indices in value_to_indices.items():
+        disjuncts = [Node.build(TypeNode.NE, result_var, value)]
+        disjuncts.extend(Node.build(TypeNode.EQ, prev_idx, j) for j in indices)
+        satisfy(Node.build(TypeNode.OR, *disjuncts))
+    return result_var
+
+
+def _build_prev_arg_index_var(
+    sequence: SequenceVar,
+    interval: IntervalVar,
+    idx: int,
+) -> Any:
     """
-    Build a pycsp3 variable for prev_arg with appropriate constraints.
+    Build a core predecessor index variable for prev_arg.
     """
     from pycsp3 import Var, satisfy
     from pycsp3.classes.nodes import Node, TypeNode
@@ -738,16 +898,11 @@ def _build_prev_arg_var(
     from pycsp3_scheduling.constraints._pycsp3 import (
         presence_var,
     )
-    from pycsp3_scheduling.expressions.element import element
-    
     intervals = sequence.intervals
-    types = sequence.types
     n = len(intervals)
-    
-    # Build extended types array: [type_0, ..., type_{n-1}, first_value, absent_value]
+
     first_idx = n
     absent_idx = n + 1
-    types_extended = list(types) + [first_value, absent_value]
 
     # Predecessor index variable (interval index, first, absent)
     prev_idx_domain = set(range(n)) - {idx}
@@ -756,11 +911,6 @@ def _build_prev_arg_var(
         prev_idx_domain.add(absent_idx)
 
     prev_idx = Var(dom=prev_idx_domain, id=f"pred{sequence._id}_{interval._id}")
-
-    # Result variable mapped from predecessor index
-    result_domain = set(types_extended[j] for j in prev_idx_domain)
-    result_var = Var(dom=result_domain, id=f"toprev{sequence._id}_{interval._id}")
-    satisfy(result_var == element(types_extended, prev_idx))
 
     # Position-based predecessor channeling
     positions, _count_var = _ensure_sequence_positions(sequence)
@@ -853,4 +1003,4 @@ def _build_prev_arg_var(
                 )
             )
 
-    return result_var
+    return prev_idx

@@ -19,7 +19,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from itertools import count
 from typing import Any, overload
+
+_element_array_counter = count()
+_element_matrix_counter = count()
 
 
 @dataclass
@@ -275,14 +279,21 @@ def element(array: Sequence, index: Any) -> Any:
 
     # Convert constant list to VarArray with singleton domains
     # Note: XCSP3 IDs must start with a letter, not underscore
-    var_id = f"elem{id(array)}"
+    var_id = f"elem{next(_element_array_counter)}"
     var_array = VarArray(
         size=len(array),
         dom=lambda k: {int(array[k])},
         id=var_id,
     )
 
-    return var_array[index]
+    try:
+        return var_array[index]
+    except TypeError:
+        # In some pycsp3 execution contexts, VarArray may come back as a plain list.
+        # Rewrap to ListVar so variable indexing still builds an Element expression.
+        from pycsp3.tools.curser import ListVar
+
+        return ListVar(var_array)[index]
 
 
 def element2d(matrix: Sequence[Sequence], row_idx: Any, col_idx: Any) -> Any:
@@ -318,7 +329,7 @@ def element2d(matrix: Sequence[Sequence], row_idx: Any, col_idx: Any) -> Any:
 
     # Create VarArray for flattened matrix
     # Note: XCSP3 IDs must start with a letter, not underscore
-    var_id = f"elem2d{id(matrix)}"
+    var_id = f"elem2d{next(_element_matrix_counter)}"
     flat_vars = VarArray(
         size=len(flat),
         dom=lambda k: {int(flat[k])},
@@ -443,4 +454,3 @@ class _ElementMatrixRowProxy:
             A pycsp3 element expression for matrix[row][col].
         """
         return self._matrix._get_element(self._row_idx, col_idx)
-
