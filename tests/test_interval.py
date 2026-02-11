@@ -215,6 +215,28 @@ class TestIntervalVarArray:
             assert task.end_min == 10
             assert task.end_max == 200
 
+    def test_expression_index_returns_indexed_proxy(self):
+        """Expression indexing on 1D array returns an indexed interval proxy."""
+        from pycsp3_scheduling.variables.interval import IndexedIntervalVar
+
+        tasks = IntervalVarArray(4, size_range=10, name="task")
+        index_expr = object()
+
+        selected = tasks[index_expr]
+
+        assert isinstance(selected, IndexedIntervalVar)
+        assert len(selected.intervals) == 4
+        assert selected.index is index_expr
+
+    def test_expression_index_rejected_on_multidim_array(self):
+        """Expression indexing is rejected on multi-dimensional arrays."""
+        ops = IntervalVarArray((2, 3), size_range=10, name="op")
+
+        with pytest.raises(
+            TypeError, match="Expression indexing is only supported on 1D IntervalVarArray"
+        ):
+            _ = ops[object()]
+
 
 class TestIntervalVarDict:
     """Tests for IntervalVarDict factory function."""

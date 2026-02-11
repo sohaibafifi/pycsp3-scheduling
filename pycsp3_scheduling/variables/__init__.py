@@ -11,8 +11,10 @@ from __future__ import annotations
 from pycsp3_scheduling.variables.interval import (
     INTERVAL_MAX,
     INTERVAL_MIN,
+    IndexedIntervalVar,
     IntervalVar,
     IntervalVarArray,
+    IntervalVarArrayView,
     IntervalVarDict,
     clear_interval_registry,
     get_registered_intervals,
@@ -28,8 +30,10 @@ from pycsp3_scheduling.variables.sequence import (
 
 __all__ = [
     # Interval variables
+    "IndexedIntervalVar",
     "IntervalVar",
     "IntervalVarArray",
+    "IntervalVarArrayView",
     "IntervalVarDict",
     "INTERVAL_MIN",
     "INTERVAL_MAX",

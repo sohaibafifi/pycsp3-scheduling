@@ -17,7 +17,7 @@ from __future__ import annotations
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Any, Union
 
 # Type aliases for bounds and stepwise functions
 Bound = Union[int, tuple[int, int]]
@@ -26,6 +26,49 @@ Step = tuple[int, int]
 # Constants for default bounds
 INTERVAL_MIN = 0
 INTERVAL_MAX = 2**30 - 1  # Large but not overflow-prone
+
+
+@dataclass(frozen=True)
+class IndexedIntervalVar:
+    """Proxy returned by expression-based indexing on IntervalVarArray."""
+
+    intervals: list[IntervalVar]
+    index: Any
+
+    def __repr__(self) -> str:
+        return f"IndexedIntervalVar(size={len(self.intervals)}, index={self.index})"
+
+
+class IntervalVarArrayView(list):
+    """List-like container supporting expression indexing for 1D interval arrays."""
+
+    def __getitem__(self, index: Any):
+        if isinstance(index, int):
+            return list.__getitem__(self, index)
+        if isinstance(index, slice):
+            return IntervalVarArrayView(list.__getitem__(self, index))
+
+        # Delegate tuple indexing (e.g., arr[i, j]) to native list semantics
+        # when it starts with an integer.
+        if (
+            isinstance(index, tuple)
+            and len(index) > 0
+            and isinstance(index[0], int)
+        ):
+            head = list.__getitem__(self, index[0])
+            rest = index[1:]
+            if len(rest) == 0:
+                return head
+            if len(rest) == 1:
+                return head[rest[0]]
+            return head[rest]
+
+        # Expression-based indexing is only meaningful for 1D arrays of IntervalVar.
+        if not all(isinstance(iv, IntervalVar) for iv in self):
+            raise TypeError(
+                "Expression indexing is only supported on 1D IntervalVarArray"
+            )
+        return IndexedIntervalVar(intervals=list(self), index=index)
 
 
 @dataclass
@@ -407,7 +450,7 @@ def IntervalVarArray(
     granularity: int = 1,
     optional: bool = False,
     name: str | None = None,
-) -> list[IntervalVar]:
+) -> IntervalVarArrayView:
     """
     Create an array of interval variables.
 
@@ -438,7 +481,7 @@ def IntervalVarArray(
 
     base_name = name or "_interval"
 
-    def create_recursive(dims: list[int], indices: list[int]) -> list:
+    def create_recursive(dims: list[int], indices: list[int]) -> IntervalVarArrayView:
         """Recursively create nested array structure."""
         if len(dims) == 1:
             # Base case: create actual interval variables
@@ -460,18 +503,15 @@ def IntervalVarArray(
                 if granularity != 1:
                     kwargs["granularity"] = granularity
                 result.append(IntervalVar(**kwargs))
-            return result
+            return IntervalVarArrayView(result)
         else:
             # Recursive case: create nested list
-            return [
+            return IntervalVarArrayView([
                 create_recursive(dims[1:], indices + [i])
                 for i in range(dims[0])
-            ]
+            ])
 
     return create_recursive(dims, [])
-
-
-    #TODO: add getitem with an expression as index
 
 
 def IntervalVarDict(

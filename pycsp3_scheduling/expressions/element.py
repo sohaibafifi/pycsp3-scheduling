@@ -268,6 +268,35 @@ def element(array: Sequence, index: Any) -> Any:
         cost = element(costs, idx)  # Returns costs[next_arg(...)]
     """
     from pycsp3 import VarArray
+    from pycsp3.classes.main.constraints import ConstraintElement, PartialConstraint
+    from pycsp3.classes.main.variables import Variable
+    from pycsp3.classes.nodes import Node, TypeNode
+    from pycsp3.tools.curser import ListVar, auxiliary
+
+    def _index_array(arr: Sequence, idx: Any) -> Any:
+        """Index helper robust to pycsp3 list/monkey-patching contexts."""
+        try:
+            return arr[idx]
+        except TypeError:
+            # Fallback when ListVar/VarArray indexing hooks are unavailable
+            # (e.g., some test/runtime contexts).
+            if isinstance(idx, PartialConstraint):
+                idx = auxiliary().replace_partial_constraint(idx)
+            elif isinstance(idx, Node):
+                res = idx.var_val_if_binary_type(TypeNode.ADD)
+                if res is not None and res[1] == 0:
+                    idx = res[0]
+                else:
+                    res = idx.var_val_if_binary_type(TypeNode.MUL)
+                    if res is not None and res[1] == 1:
+                        idx = res[0]
+                    else:
+                        idx = auxiliary().replace_node(idx, values=range(len(arr)))
+
+            if isinstance(idx, Variable):
+                return PartialConstraint(ConstraintElement(arr, index=idx))
+
+            return ListVar(arr)[idx]
 
     # If index is a constant integer, just return the value
     if isinstance(index, int):
@@ -275,25 +304,21 @@ def element(array: Sequence, index: Any) -> Any:
 
     # If array is already a VarArray, use it directly
     if hasattr(array, '__getitem__') and hasattr(array[0] if array else None, 'dom'):
-        return array[index]
+        return _index_array(array, index)
 
-    # Convert constant list to VarArray with singleton domains
-    # Note: XCSP3 IDs must start with a letter, not underscore
-    var_id = f"elem{next(_element_array_counter)}"
-    var_array = VarArray(
-        size=len(array),
-        dom=lambda k: {int(array[k])},
-        id=var_id,
-    )
+    # Convert numeric constant list to VarArray with singleton domains.
+    if all(isinstance(v, (int, float)) for v in array):
+        # Note: XCSP3 IDs must start with a letter, not underscore
+        var_id = f"elem{next(_element_array_counter)}"
+        var_array = VarArray(
+            size=len(array),
+            dom=lambda k: {int(array[k])},
+            id=var_id,
+        )
+        return _index_array(var_array, index)
 
-    try:
-        return var_array[index]
-    except TypeError:
-        # In some pycsp3 execution contexts, VarArray may come back as a plain list.
-        # Rewrap to ListVar so variable indexing still builds an Element expression.
-        from pycsp3.tools.curser import ListVar
-
-        return ListVar(var_array)[index]
+    # Non-numeric lists (e.g., Node expressions): index directly.
+    return _index_array(array, index)
 
 
 def element2d(matrix: Sequence[Sequence], row_idx: Any, col_idx: Any) -> Any:

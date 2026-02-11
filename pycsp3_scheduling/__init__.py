@@ -29,8 +29,10 @@ __author__ = "Sohaib AFIFI"
 from pycsp3_scheduling.variables import (
     INTERVAL_MAX,
     INTERVAL_MIN,
+    IndexedIntervalVar,
     IntervalVar,
     IntervalVarArray,
+    IntervalVarArrayView,
     IntervalVarDict,
     SequenceVar,
     SequenceVarArray,
@@ -209,8 +211,10 @@ __all__ = [
     # Core
     "clear",
     # Variables
+    "IndexedIntervalVar",
     "IntervalVar",
     "IntervalVarArray",
+    "IntervalVarArrayView",
     "IntervalVarDict",
     "SequenceVar",
     "SequenceVarArray",

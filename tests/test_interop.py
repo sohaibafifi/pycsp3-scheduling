@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from pycsp3_scheduling import IntervalVar, clear
+from pycsp3_scheduling import IntervalVar, IntervalVarArray, clear
 from pycsp3_scheduling.variables.interval import clear_interval_registry
 from pycsp3_scheduling.interop import (
     IntervalValue,
@@ -59,6 +59,36 @@ class TestStartEndPresenceTime:
         """Test presence_time raises on invalid input."""
         with pytest.raises(TypeError, match="expects an IntervalVar"):
             presence_time([1, 2, 3])
+
+    def test_start_time_with_expression_indexed_interval_array(self):
+        """start_time accepts IntervalVarArray indexed by a pycsp3 expression."""
+        tasks = IntervalVarArray(4, size_range=10, name="task")
+        idx_source = IntervalVar(start=(0, 3), size=1, name="idx_source")
+        idx = start_time(idx_source)
+
+        result = start_time(tasks[idx])
+
+        assert result is not None
+
+    def test_end_time_with_expression_indexed_interval_array(self):
+        """end_time accepts IntervalVarArray indexed by a pycsp3 expression."""
+        tasks = IntervalVarArray(3, size_range=5, name="task")
+        idx_source = IntervalVar(start=(0, 2), size=1, name="idx_source")
+        idx = start_time(idx_source)
+
+        result = end_time(tasks[idx])
+
+        assert result is not None
+
+    def test_presence_time_with_expression_indexed_interval_array(self):
+        """presence_time accepts expression-indexed optional interval arrays."""
+        tasks = IntervalVarArray(3, size_range=5, optional=True, name="task")
+        idx_source = IntervalVar(start=(0, 2), size=1, name="idx_source_p")
+        idx = start_time(idx_source)
+
+        result = presence_time(tasks[idx])
+
+        assert result is not None
 
 
 class TestIntervalValue:

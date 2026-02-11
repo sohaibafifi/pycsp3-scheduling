@@ -8,29 +8,47 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from pycsp3_scheduling.constraints._pycsp3 import length_value, presence_var, start_var
-from pycsp3_scheduling.variables.interval import IntervalVar
+from pycsp3_scheduling.constraints._pycsp3 import (
+    _build_end_expr,
+    _get_node_builders,
+    length_value,
+    presence_var,
+    start_var,
+)
+from pycsp3_scheduling.expressions.element import element
+from pycsp3_scheduling.variables.interval import IndexedIntervalVar, IntervalVar
 
 
 def start_time(interval: IntervalVar):
     """Return a pycsp3 variable representing the start time."""
-    if not isinstance(interval, IntervalVar):
-        raise TypeError("start_time expects an IntervalVar")
-    return start_var(interval)
+    if isinstance(interval, IntervalVar):
+        return start_var(interval)
+    if isinstance(interval, IndexedIntervalVar):
+        starts = [start_var(iv) for iv in interval.intervals]
+        return element(starts, interval.index)
+    raise TypeError("start_time expects an IntervalVar")
 
 
 def end_time(interval: IntervalVar):
     """Return a pycsp3 expression representing the end time (start + length)."""
-    if not isinstance(interval, IntervalVar):
-        raise TypeError("end_time expects an IntervalVar")
-    return start_var(interval) + length_value(interval)
+    Node, TypeNode = _get_node_builders()
+
+    if isinstance(interval, IntervalVar):
+        return _build_end_expr(interval, Node, TypeNode)
+    if isinstance(interval, IndexedIntervalVar):
+        ends = [_build_end_expr(iv, Node, TypeNode) for iv in interval.intervals]
+        return element(ends, interval.index)
+    raise TypeError("end_time expects an IntervalVar")
 
 
 def presence_time(interval: IntervalVar):
     """Return a pycsp3 variable representing presence (0/1) for optional intervals."""
-    if not isinstance(interval, IntervalVar):
-        raise TypeError("presence_time expects an IntervalVar")
-    return presence_var(interval)
+    if isinstance(interval, IntervalVar):
+        return presence_var(interval)
+    if isinstance(interval, IndexedIntervalVar):
+        presences = [presence_var(iv) for iv in interval.intervals]
+        return element(presences, interval.index)
+    raise TypeError("presence_time expects an IntervalVar")
 
 
 @dataclass(frozen=True)
