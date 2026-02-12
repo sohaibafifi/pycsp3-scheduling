@@ -17,6 +17,19 @@ from typing import Any
 from metrics import ComparisonResult, RunResult, compare_objective_values
 
 
+MODEL_DISPLAY_NAMES = {
+    "SchedulingFS": "Flow-shop",
+    "SchedulingJS": "Job-shop",
+    "SchedulingOS": "Open-shop",
+    "TravelingTournamentWithPredefinedVenues": "TTPV",
+}
+
+
+def _display_model_name(model_name: str) -> str:
+    """Return user-facing model label for reports and plots."""
+    return MODEL_DISPLAY_NAMES.get(model_name, model_name)
+
+
 def _mean(values: list[float]) -> float | None:
     """Return arithmetic mean or None if empty."""
     if not values:
@@ -280,7 +293,7 @@ def generate_csv_report(
         for c in comparisons:
             writer.writerow(
                 [
-                    c.model_name,
+                    _display_model_name(c.model_name),
                     c.instance,
                     c.instance_count,
                     _fmt_count(c.classical_vars, c.instance_count),
@@ -334,7 +347,7 @@ Model & \multicolumn{2}{c}{Variables} & \multicolumn{2}{c}{Constraints} & \multi
             else:
                 match_symbol = "--"
             f.write(
-                f"{c.model_name} & "
+                f"{_display_model_name(c.model_name)} & "
                 f"{_fmt_count(c.classical_vars, c.instance_count)} & "
                 f"{_fmt_count(c.scheduling_vars, c.instance_count)} & "
                 f"{_fmt_count(c.classical_constraints, c.instance_count)} & "
@@ -367,7 +380,7 @@ Model & Var Augmentation (\%) & Ctr Augmentation (\%) & LOC Reduction (\%) \\
 
         for c in comparisons:
             f.write(
-                f"{c.model_name} & "
+                f"{_display_model_name(c.model_name)} & "
                 f"{c.var_augmentation * 100:.1f} & "
                 f"{c.constraint_augmentation * 100:.1f} & "
                 f"{c.loc_reduction * 100:.1f} \\\\\n"
@@ -564,12 +577,7 @@ def try_generate_plots(
         print("  matplotlib not available, skipping plots")
         return False
 
-    display_name = {
-        "SchedulingFS": "Flow-shop",
-        "SchedulingJS": "Job-shop",
-        "SchedulingOS": "Open-shop",
-    }
-    models = [display_name.get(c.model_name, c.model_name) for c in comparisons]
+    models = [_display_model_name(c.model_name) for c in comparisons]
     x = np.arange(len(models))
     width = 0.35
 
@@ -691,7 +699,7 @@ def try_generate_plots(
     for c in comparisons:
         if c.classical_objective is None or c.scheduling_objective is None:
             continue
-        obj_models.append(display_name.get(c.model_name, c.model_name))
+        obj_models.append(_display_model_name(c.model_name))
         classical_obj.append(c.classical_objective)
         scheduling_obj.append(c.scheduling_objective)
 
@@ -781,7 +789,7 @@ def try_generate_plots(
         plt.savefig(output_dir / "objective_gap.png", dpi=150)
         plt.close()
 
-    # 6. Objective average better counts
+    # 6. Objective average better counts (model level)
     fig, ax = plt.subplots(figsize=(8, 5))
 
     snapshot_labels = ["Classical Better", "Tie", "Scheduling Better"]
@@ -801,6 +809,36 @@ def try_generate_plots(
     plt.savefig(output_dir / "objective_snapshot_comparison.pdf")
     plt.savefig(output_dir / "objective_snapshot_comparison.png", dpi=150)
     plt.close()
+
+    # 6b. Objective better counts (instance level)
+    if instance_comparisons is not None:
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        instance_snapshot_labels = ["Classical Better", "Tie", "Scheduling Better"]
+        instance_snapshot_values = [
+            sum(1 for c in instance_comparisons if c.objective_better == "classical"),
+            sum(1 for c in instance_comparisons if c.objective_better == "tie"),
+            sum(1 for c in instance_comparisons if c.objective_better == "scheduling"),
+        ]
+        instance_snapshot_colors = ["steelblue", "gray", "coral"]
+
+        ax.bar(
+            instance_snapshot_labels,
+            instance_snapshot_values,
+            color=instance_snapshot_colors,
+            edgecolor="black",
+        )
+        ax.set_ylabel("Number of Instance Pairs")
+        ax.set_title("Objective Snapshot: Better Counts (Instance-level)")
+        ax.set_ylim(
+            0,
+            max(instance_snapshot_values) + 1 if instance_snapshot_values else 1,
+        )
+
+        plt.tight_layout()
+        plt.savefig(output_dir / "objective_snapshot_comparison_instances.pdf")
+        plt.savefig(output_dir / "objective_snapshot_comparison_instances.png", dpi=150)
+        plt.close()
 
     # 7. Number of proven optima
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -962,6 +1000,9 @@ def generate_comparison_report(
         if c.classical_status == "OPTIMUM" and c.scheduling_status == "OPTIMUM"
     ]
     instance_status_comparable = [c for c in instance_comparisons if c.statuses_comparable]
+    instance_objective_snapshot_comparable = [
+        c for c in instance_comparisons if c.objective_snapshot_comparable
+    ]
     instance_objective_comparable = [
         c for c in instance_comparisons if c.objectives_comparable
     ]
@@ -979,6 +1020,19 @@ def generate_comparison_report(
         for c in instance_comparisons
         if c.classical_status == "OPTIMUM" and c.scheduling_status == "OPTIMUM"
     ]
+    instance_objective_better_classical = [
+        c
+        for c in instance_objective_snapshot_comparable
+        if c.objective_better == "classical"
+    ]
+    instance_objective_better_scheduling = [
+        c
+        for c in instance_objective_snapshot_comparable
+        if c.objective_better == "scheduling"
+    ]
+    instance_objective_better_tie = [
+        c for c in instance_objective_snapshot_comparable if c.objective_better == "tie"
+    ]
 
     print("\n" + "=" * 60)
     print("BENCHMARK SUMMARY")
@@ -992,7 +1046,7 @@ def generate_comparison_report(
         obj_match = _objective_match_label(c.objectives_match)
         status_str = "OK" if c.statuses_comparable else "N/A"
         print(
-            f"{c.model_name:<20} "
+            f"{_display_model_name(c.model_name):<20} "
             f"{c.var_augmentation * 100:>9.1f}% "
             f"{c.constraint_augmentation * 100:>9.1f}% "
             f"{obj_best:>10} "
@@ -1059,6 +1113,15 @@ def generate_comparison_report(
         f"Tie:{len(objective_better_tie):>2} "
         f"{'':>10} "
         f"N:{len(objective_snapshot_comparable):>2}"
+        f"{'':>8}"
+    )
+    print(
+        f"{'Obj better(inst)':<20} "
+        f"C:{len(instance_objective_better_classical):>3} "
+        f"S:{len(instance_objective_better_scheduling):>3} "
+        f"Tie:{len(instance_objective_better_tie):>3} "
+        f"{'':>8} "
+        f"N:{len(instance_objective_snapshot_comparable):>3}"
         f"{'':>8}"
     )
     if objective_avg_pairs:
