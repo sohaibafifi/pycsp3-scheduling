@@ -398,7 +398,9 @@ Model & Var Augmentation (\%) & Ctr Augmentation (\%) & LOC Reduction (\%) \\
 
 
 def generate_summary_json(
-    comparisons: list[ComparisonResult], output_path: Path
+    comparisons: list[ComparisonResult],
+    output_path: Path,
+    instance_comparisons: list[ComparisonResult] | None = None,
 ) -> None:
     """Generate JSON summary with aggregated statistics."""
     status_comparable = [c for c in comparisons if c.statuses_comparable]
@@ -490,12 +492,69 @@ def generate_summary_json(
         },
     }
 
+    if instance_comparisons is not None:
+        instance_status_comparable = [
+            c for c in instance_comparisons if c.statuses_comparable
+        ]
+        instance_objective_snapshot_comparable = [
+            c for c in instance_comparisons if c.objective_snapshot_comparable
+        ]
+        instance_objective_comparable = [
+            c for c in instance_comparisons if c.objectives_comparable
+        ]
+        instance_objective_matches = [
+            c for c in instance_objective_comparable if c.objectives_match is True
+        ]
+        instance_objective_better_classical = [
+            c
+            for c in instance_objective_snapshot_comparable
+            if c.objective_better == "classical"
+        ]
+        instance_objective_better_scheduling = [
+            c
+            for c in instance_objective_snapshot_comparable
+            if c.objective_better == "scheduling"
+        ]
+        instance_objective_better_tie = [
+            c for c in instance_objective_snapshot_comparable if c.objective_better == "tie"
+        ]
+        instance_classical_optimum = [
+            c for c in instance_comparisons if c.classical_status == "OPTIMUM"
+        ]
+        instance_scheduling_optimum = [
+            c for c in instance_comparisons if c.scheduling_status == "OPTIMUM"
+        ]
+        instance_both_optimum = [
+            c
+            for c in instance_comparisons
+            if c.classical_status == "OPTIMUM" and c.scheduling_status == "OPTIMUM"
+        ]
+        summary["instance_level"] = {
+            "num_pairs": len(instance_comparisons),
+            "num_status_comparable": len(instance_status_comparable),
+            "num_objective_snapshot_comparable": len(
+                instance_objective_snapshot_comparable
+            ),
+            "num_objective_better_classical": len(instance_objective_better_classical),
+            "num_objective_better_scheduling": len(
+                instance_objective_better_scheduling
+            ),
+            "num_objective_better_tie": len(instance_objective_better_tie),
+            "num_classical_optimum": len(instance_classical_optimum),
+            "num_scheduling_optimum": len(instance_scheduling_optimum),
+            "num_both_optimum": len(instance_both_optimum),
+            "num_objective_comparable": len(instance_objective_comparable),
+            "num_objective_matches": len(instance_objective_matches),
+        }
+
     with open(output_path, "w") as f:
         json.dump(summary, f, indent=2)
 
 
 def try_generate_plots(
-    comparisons: list[ComparisonResult], output_dir: Path
+    comparisons: list[ComparisonResult],
+    output_dir: Path,
+    instance_comparisons: list[ComparisonResult] | None = None,
 ) -> bool:
     """Try to generate plots if matplotlib is available."""
     try:
@@ -767,6 +826,42 @@ def try_generate_plots(
     plt.savefig(output_dir / "optimality_counts.png", dpi=150)
     plt.close()
 
+    # 8. Number of proven optima (instance level)
+    if instance_comparisons is not None:
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        instance_optimum_labels = [
+            "Classical OPTIMUM",
+            "Scheduling OPTIMUM",
+            "Both OPTIMUM",
+        ]
+        instance_optimum_values = [
+            sum(1 for c in instance_comparisons if c.classical_status == "OPTIMUM"),
+            sum(1 for c in instance_comparisons if c.scheduling_status == "OPTIMUM"),
+            sum(
+                1
+                for c in instance_comparisons
+                if c.classical_status == "OPTIMUM" and c.scheduling_status == "OPTIMUM"
+            ),
+        ]
+
+        ax.bar(
+            instance_optimum_labels,
+            instance_optimum_values,
+            color=["steelblue", "coral", "seagreen"],
+            edgecolor="black",
+        )
+        ax.set_ylabel("Number of Instance Pairs")
+        ax.set_title("Proven Optimality Counts (Instance-level)")
+        ax.set_ylim(
+            0, max(instance_optimum_values) + 1 if instance_optimum_values else 1
+        )
+
+        plt.tight_layout()
+        plt.savefig(output_dir / "optimality_counts_instances.pdf")
+        plt.savefig(output_dir / "optimality_counts_instances.png", dpi=150)
+        plt.close()
+
     return True
 
 
@@ -801,6 +896,8 @@ def generate_comparison_report(
         print("  No valid comparisons to report")
         return []
 
+    instance_comparisons = comparisons
+
     # Aggregate across instances to one row per model (averages)
     comparisons = aggregate_comparisons_by_model(comparisons)
 
@@ -812,6 +909,8 @@ def generate_comparison_report(
     if "csv" in selected_formats:
         print(f"  CSV report: {reports_dir / 'comparison.csv'}")
         generate_csv_report(comparisons, reports_dir / "comparison.csv")
+        print(f"  CSV instance report: {reports_dir / 'comparison_instances.csv'}")
+        generate_csv_report(instance_comparisons, reports_dir / "comparison_instances.csv")
 
     if "latex" in selected_formats:
         print(f"  LaTeX table: {reports_dir / 'comparison.tex'}")
@@ -819,11 +918,19 @@ def generate_comparison_report(
 
     if "json" in selected_formats:
         print(f"  JSON summary: {reports_dir / 'summary.json'}")
-        generate_summary_json(comparisons, reports_dir / "summary.json")
+        generate_summary_json(
+            comparisons,
+            reports_dir / "summary.json",
+            instance_comparisons=instance_comparisons,
+        )
 
     if generate_plots and "plots" in selected_formats:
         print("  Generating plots...")
-        if try_generate_plots(comparisons, reports_dir):
+        if try_generate_plots(
+            comparisons,
+            reports_dir,
+            instance_comparisons=instance_comparisons,
+        ):
             print("  Plots saved to reports/")
 
     # Print summary to console
@@ -852,6 +959,24 @@ def generate_comparison_report(
     both_optimum = [
         c
         for c in comparisons
+        if c.classical_status == "OPTIMUM" and c.scheduling_status == "OPTIMUM"
+    ]
+    instance_status_comparable = [c for c in instance_comparisons if c.statuses_comparable]
+    instance_objective_comparable = [
+        c for c in instance_comparisons if c.objectives_comparable
+    ]
+    instance_objective_matches = [
+        c for c in instance_objective_comparable if c.objectives_match is True
+    ]
+    instance_classical_optimum = [
+        c for c in instance_comparisons if c.classical_status == "OPTIMUM"
+    ]
+    instance_scheduling_optimum = [
+        c for c in instance_comparisons if c.scheduling_status == "OPTIMUM"
+    ]
+    instance_both_optimum = [
+        c
+        for c in instance_comparisons
         if c.classical_status == "OPTIMUM" and c.scheduling_status == "OPTIMUM"
     ]
 
@@ -910,6 +1035,21 @@ def generate_comparison_report(
         f"S:{len(scheduling_optimum):>2}/{len(comparisons):<2} "
         f"{'':>10} "
         f"Both:{len(both_optimum):>2}/{len(comparisons):<2}"
+        f"{'':>8}"
+    )
+    print(
+        f"{'OPTIMUM(inst)':<20} "
+        f"C:{len(instance_classical_optimum):>3}/{len(instance_comparisons):<3} "
+        f"S:{len(instance_scheduling_optimum):>3}/{len(instance_comparisons):<3} "
+        f"{'':>8} "
+        f"Both:{len(instance_both_optimum):>3}/{len(instance_comparisons):<3}"
+        f"{'':>8}"
+    )
+    print(
+        f"{'Valid pairs(inst)':<20} "
+        f"{len(instance_status_comparable):>10}/{len(instance_comparisons)} "
+        f"{'':>10} "
+        f"{len(instance_objective_matches):>5}/{len(instance_objective_comparable):<4}"
         f"{'':>8}"
     )
     print(

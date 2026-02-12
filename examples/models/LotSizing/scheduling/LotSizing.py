@@ -46,19 +46,39 @@ orders = [
 ]
 
 # One disjunctive machine handling all productions.
-prod_seq = SequenceVar(intervals=orders, types=list(O), name="prod_seq")
+prod_seq = SequenceVar(intervals=orders, types=itemTypes, name="prod_seq")
 
-# Build setup-cost matrix at order granularity.
-# CSPLib data is usually already order-indexed (+ a trailing dummy row/col),
-# but we also support item-type matrices.
-if len(changeCosts) >= nOrders and all(len(row) >= nOrders for row in changeCosts[:nOrders]):
-    setup_matrix = [row[:nOrders] for row in changeCosts[:nOrders]]
+# Build setup-cost matrix at item-type granularity.
+# Some datasets provide a type matrix directly, others provide an order matrix
+# with an extra dummy row/column. In the latter case, we extract one
+# representative row/column per item type using order_number convention.
+is_type_matrix = (
+    len(changeCosts) >= nItemTypes
+    and all(len(row) >= nItemTypes for row in changeCosts[:nItemTypes])
+    and len(changeCosts) <= nItemTypes + 1
+)
+if is_type_matrix:
+    setup_matrix = [row[:nItemTypes] for row in changeCosts[:nItemTypes]]
 else:
-    setup_matrix = [[changeCosts[itemTypes[i]][itemTypes[j]] for j in O] for i in O]
+    first_order_of_type = []
+    offset = 0
+    for count in nbOfOrders:
+        first_order_of_type.append(offset if count > 0 else None)
+        offset += count
+
+    setup_matrix = [[0 for _ in range(nItemTypes)] for _ in range(nItemTypes)]
+    present_types = [t for t, count in enumerate(nbOfOrders) if count > 0]
+    for t1 in present_types:
+        i = first_order_of_type[t1]
+        assert i is not None
+        for t2 in present_types:
+            j = first_order_of_type[t2]
+            assert j is not None
+            setup_matrix[t1][t2] = changeCosts[i][j]
 
 M = ElementMatrix(
     matrix=setup_matrix,
-    last_value=[0] * nOrders,
+    last_value=[0] * nItemTypes,
     absent_value=0,
 )
 
@@ -82,7 +102,7 @@ satisfy(
 )
 
 setup_cost = Sum(
-    M[i][next_arg(prod_seq, orders[i], last_value=M.last_type, absent_value=M.absent_type)]
+    M[itemTypes[i]][next_arg(prod_seq, orders[i], last_value=M.last_type, absent_value=M.absent_type)]
     for i in O
 )
 inventory_cost = Sum(inventoryCosts[itemTypes[i]] * (duePeriods[i] - start_time(orders[i])) for i in O)

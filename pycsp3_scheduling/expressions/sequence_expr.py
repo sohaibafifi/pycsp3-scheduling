@@ -406,17 +406,22 @@ def next_arg(
     if cache_key in _next_arg_vars:
         return _next_arg_vars[cache_key]
 
-    # Core successor index cache (independent from marker values)
-    index_cache_key = (sequence._id, interval._id)
-    if index_cache_key in _next_arg_index_vars:
-        next_idx = _next_arg_index_vars[index_cache_key]
+    if len(set(sequence.types)) < len(sequence.types):
+        # Repeated types: encode successor type directly (lighter than
+        # successor-index + value mapping).
+        var = _build_next_arg_direct_var(sequence, interval, idx, last_value, absent_value)
     else:
-        next_idx = _build_next_arg_index_var(sequence, interval, idx)
-        _next_arg_index_vars[index_cache_key] = next_idx
+        # Core successor index cache (independent from marker values)
+        index_cache_key = (sequence._id, interval._id)
+        if index_cache_key in _next_arg_index_vars:
+            next_idx = _next_arg_index_vars[index_cache_key]
+        else:
+            next_idx = _build_next_arg_index_var(sequence, interval, idx)
+            _next_arg_index_vars[index_cache_key] = next_idx
 
-    var = _build_next_arg_value_var(
-        sequence, interval, idx, next_idx, last_value, absent_value
-    )
+        var = _build_next_arg_value_var(
+            sequence, interval, idx, next_idx, last_value, absent_value
+        )
     _next_arg_vars[cache_key] = var
     return var
 
@@ -619,6 +624,121 @@ def _build_next_arg_index_var(
             )
 
     return next_idx
+
+
+def _build_next_arg_direct_var(
+    sequence: SequenceVar,
+    interval: IntervalVar,
+    idx: int,
+    last_value: int,
+    absent_value: int,
+) -> Any:
+    """
+    Build next_arg directly on successor type values (no successor-index variable).
+
+    This is especially beneficial when sequence types are repeated, as it avoids
+    the extra index-to-value channeling layer.
+    """
+    from pycsp3 import Var, satisfy
+    from pycsp3.classes.nodes import Node, TypeNode
+
+    from pycsp3_scheduling.constraints._pycsp3 import presence_var
+
+    types = sequence.types
+    n = len(sequence.intervals)
+
+    result_domain = {types[j] for j in range(n) if j != idx}
+    result_domain.add(last_value)
+    if interval.optional:
+        result_domain.add(absent_value)
+
+    suffix = _marker_suffix(last_value, absent_value)
+    if suffix == "p0_p0":
+        result_id = f"tonext{sequence._id}_{interval._id}"
+    else:
+        result_id = f"tonext{sequence._id}_{interval._id}_{suffix}"
+    result_var = Var(dom=result_domain, id=result_id)
+
+    positions, count_var = _ensure_sequence_positions(sequence)
+    pos_i = positions[idx]
+    pos_i_plus_1 = Node.build(TypeNode.ADD, pos_i, 1)
+    pres_i = presence_var(interval) if interval.optional else 1
+
+    if interval.optional:
+        # Absent <-> absent marker
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.EQ, pres_i, 1),
+                Node.build(TypeNode.EQ, result_var, absent_value),
+            )
+        )
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, result_var, absent_value),
+                Node.build(TypeNode.EQ, pres_i, 0),
+            )
+        )
+
+    # Last position <-> last marker
+    if interval.optional:
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.EQ, pres_i, 0),
+                Node.build(TypeNode.NE, pos_i, count_var),
+                Node.build(TypeNode.EQ, result_var, last_value),
+            )
+        )
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, result_var, last_value),
+                Node.build(TypeNode.EQ, pres_i, 0),
+                Node.build(TypeNode.EQ, pos_i, count_var),
+            )
+        )
+    else:
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, pos_i, count_var),
+                Node.build(TypeNode.EQ, result_var, last_value),
+            )
+        )
+        satisfy(
+            Node.build(
+                TypeNode.OR,
+                Node.build(TypeNode.NE, result_var, last_value),
+                Node.build(TypeNode.EQ, pos_i, count_var),
+            )
+        )
+
+    # Successor typing: if j is right after i, result is type(j)
+    for j in range(n):
+        if j == idx:
+            continue
+        pos_j = positions[j]
+        if interval.optional:
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.EQ, pres_i, 0),
+                    Node.build(TypeNode.NE, pos_j, pos_i_plus_1),
+                    Node.build(TypeNode.EQ, result_var, types[j]),
+                )
+            )
+        else:
+            satisfy(
+                Node.build(
+                    TypeNode.OR,
+                    Node.build(TypeNode.NE, pos_j, pos_i_plus_1),
+                    Node.build(TypeNode.EQ, result_var, types[j]),
+                )
+            )
+
+    return result_var
 
 
 # =============================================================================
