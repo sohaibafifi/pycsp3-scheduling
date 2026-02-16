@@ -24,10 +24,19 @@ MODEL_DISPLAY_NAMES = {
     "TravelingTournamentWithPredefinedVenues": "TTPV",
 }
 
+# Families excluded from report outputs/statistics.
+# Use internal model names (preferred) or display labels.
+EXCLUDED_MODELS = {"SchedulingOS", "Open-shop"}
+
 
 def _display_model_name(model_name: str) -> str:
     """Return user-facing model label for reports and plots."""
     return MODEL_DISPLAY_NAMES.get(model_name, model_name)
+
+
+def _is_excluded_model(model_name: str) -> bool:
+    """Return True if a model should be excluded from report outputs."""
+    return model_name in EXCLUDED_MODELS or _display_model_name(model_name) in EXCLUDED_MODELS
 
 
 def _mean(values: list[float]) -> float | None:
@@ -659,22 +668,83 @@ def try_generate_plots(
     plt.close()
 
     # 4. Scatter plot: Classical vs Scheduling solve time
+    # For plotting only, avoid mapping TIMEOUT runs to 0s when no solve time was
+    # recorded. This mostly affects visual placement (e.g., LotSizing) while
+    # keeping reported speedup values unchanged.
+    scatter_classical_times = classical_times
+    scatter_scheduling_times = scheduling_times
+    if instance_comparisons is not None:
+        timeout_candidates = [
+            t
+            for c in instance_comparisons
+            for t, status in (
+                (c.classical_solve_time, c.classical_status),
+                (c.scheduling_solve_time, c.scheduling_status),
+            )
+            if status == "TIMEOUT" and t > 0
+        ]
+        # Use observed timeout solve times when available; fallback to a
+        # conventional 1200s benchmark cap.
+        timeout_fallback = max(timeout_candidates) if timeout_candidates else 1200.0
+
+        def _plot_time(value: float, status: str) -> float:
+            return timeout_fallback if status == "TIMEOUT" and value <= 0 else value
+
+        by_model: dict[str, list[ComparisonResult]] = defaultdict(list)
+        for c in instance_comparisons:
+            by_model[c.model_name].append(c)
+
+        scatter_classical_times = []
+        scatter_scheduling_times = []
+        for agg in comparisons:
+            items = by_model.get(agg.model_name, [])
+            if not items:
+                scatter_classical_times.append(agg.classical_solve_time)
+                scatter_scheduling_times.append(agg.scheduling_solve_time)
+                continue
+
+            classical_vals = [
+                _plot_time(c.classical_solve_time, c.classical_status) for c in items
+            ]
+            scheduling_vals = [
+                _plot_time(c.scheduling_solve_time, c.scheduling_status) for c in items
+            ]
+            scatter_classical_times.append(sum(classical_vals) / len(classical_vals))
+            scatter_scheduling_times.append(sum(scheduling_vals) / len(scheduling_vals))
+
+    # Hide selected families from scatter when needed for readability.
+    scatter_points = [
+        (model, c_time, s_time)
+        for model, c_time, s_time in zip(
+            models, scatter_classical_times, scatter_scheduling_times
+        )
+        if model != "Open-shop"
+    ]
+    if not scatter_points:
+        scatter_points = list(
+            zip(models, scatter_classical_times, scatter_scheduling_times)
+        )
+
+    scatter_models = [p[0] for p in scatter_points]
+    scatter_x = [p[1] for p in scatter_points]
+    scatter_y = [p[2] for p in scatter_points]
+
     fig, ax = plt.subplots(figsize=(8, 8))
 
-    ax.scatter(classical_times, scheduling_times, s=100, alpha=0.7)
+    ax.scatter(scatter_x, scatter_y, s=100, alpha=0.7)
 
     # Add model labels
-    for i, model in enumerate(models):
+    for i, model in enumerate(scatter_models):
         ax.annotate(
             model,
-            (classical_times[i], scheduling_times[i]),
+            (scatter_x[i], scatter_y[i]),
             textcoords="offset points",
             xytext=(5, 5),
             fontsize=8,
         )
 
     # Add diagonal line (equal performance)
-    max_time = max(max(classical_times), max(scheduling_times))
+    max_time = max(max(scatter_x), max(scatter_y))
     axis_max = max_time * 1.05 if max_time > 0 else 1.0
     ax.plot([0, axis_max], [0, axis_max], "k--", alpha=0.5, label="Equal")
     ax.set_xlim(0, axis_max)
@@ -912,8 +982,16 @@ def generate_comparison_report(
     """Generate all comparison reports from raw results."""
     selected_formats = formats or {"csv", "latex", "json", "plots"}
 
+    # Exclude selected families from all report outputs and computed statistics.
+    filtered_results = [
+        r for r in results if not _is_excluded_model(str(r.get("model_name", "")))
+    ]
+    removed = len(results) - len(filtered_results)
+    if removed > 0:
+        print(f"  Excluded {removed} raw rows from report generation: {sorted(EXCLUDED_MODELS)}")
+
     # Aggregate results
-    by_model = aggregate_results(results)
+    by_model = aggregate_results(filtered_results)
 
     # Build comparisons
     comparisons = []

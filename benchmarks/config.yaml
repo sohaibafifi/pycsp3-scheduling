@@ -286,31 +286,6 @@ models:
     instances:
     - 015-15-1.json
     - e0ddr1-0.json
-  SchedulingOS:
-    classical: examples/models/SchedulingOS/classical/SchedulingOS.py
-    scheduling: examples/models/SchedulingOS/scheduling/SchedulingOS.py
-    data_dir: examples/models/SchedulingOS/data
-    instances:
-    - GP-os-01.json
-    - gp-04-01.json
-    - gp-04-05.json
-    - gp-05-01.json
-    - gp-05-05.json
-    - gp-06-01.json
-    - gp-06-05.json
-    - gp-07-01.json
-    - gp-07-05.json
-    - gp-08-01.json
-    - gp-08-05.json
-    - gp-09-01.json
-    - gp-09-05.json
-    - gp-10-01.json
-    - gp-10-05.json
-    - gp10-4.json
-    - j7per10-1.json
-    - j8per0-2.json
-    - tai20-4.json
-    - tai20-6.json
   TestScheduling:
     classical: examples/models/TestScheduling/classical/TestScheduling.py
     scheduling: examples/models/TestScheduling/scheduling/TestScheduling.py
